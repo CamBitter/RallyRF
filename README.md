@@ -1,21 +1,21 @@
 # RallyRF
 Random forest ML classification applied to tennis match outcome prediction.
 
-By Cam Bitter, Sebastian Pantzer, Danny Smith.
+By Cam Bitter, Sebastian Pantzer, and Danny Smith.
 
-# Abstract
+## Abstract
 
-# Motivation and Question
+## Motivation and Question
 
-# Planned Deliverables
+## Planned Deliverables
 
-# Resources Required
+## Resources Required
 
-# What we will learn
+## What we will learn
 
-# Risk Statement
+## Risk Statement
 
-# Ethics Statement
+## Ethics Statement
 
-# Tentative Timeline
+## Tentative Timeline
 
