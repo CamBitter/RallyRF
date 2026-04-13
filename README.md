@@ -37,7 +37,7 @@ Tennis is a very hard sport to predict, with variables like mental state having 
 
 - Creation and implementation of custom model
 - General ML Pipeline
-- Effiective data visualization
+- Effective data visualization
 - Torch
 
 ## Risk Statement
