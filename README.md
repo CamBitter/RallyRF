@@ -84,7 +84,17 @@ could be used to score better than gambling odds and win money. Therefore, our p
 
 ## Tentative Timeline
 
-Week 1: Decision Tree implemented
-Week 2: Random Forest implemented
-Week 3: Feature extraction/engineering complete
+Week 1: Implement Decision Tree classifier
+Week 2: Implement Random Forest classifier
+
+Week 2 Goal:
+- Ideally by this point we will have a solid understanding of our decision tree classifier, and will have completed our random forest implementation
+- Test our model on a premade classification dataset
+
+Week 3: Feature extraction/engineering complete, mess around with gradient boosting
 Week 4: Final testing and model comparison complete
+
+Week 4 Goal:
+- Final random forest classifier complete
+- Data analysis pipeline complete (feature generation)
+- Comparison to existing research and gambling odds
