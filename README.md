@@ -7,7 +7,7 @@ Cam Bitter, Sebastian Pantzer, and Danny Smith.
 
 ## Abstract
 
-We aim to create a custom random forest classifier. We will build up from decision trees to random forests, and explore further optimization techniques such as gradient boosting. 
+We aim to create a custom random forest classifier for predicting tennis match outcomes. We will build up from decision trees to random forests, and explore further optimization techniques such as gradient boosting. 
 
 We will explore the rest of the ML pipeline by performing data analysis on historical tennis match data to generate insightful player statistic features, which will be fed into our classifier to predict match outcomes. We will compare our results with a 2019 paper that achieves high match prediction accuracy using random forests, logistic regression, and support vector machines.
 
