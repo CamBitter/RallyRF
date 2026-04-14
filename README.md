@@ -33,24 +33,18 @@ We may also use [Match Charting Project](https://github.com/JeffSackmann/tennis_
 This data provides *post match* statistics for each match. Since we want to use stats to predict an unknown match outcome, we will need to perform some data analysis to collect statisics for each player prior to the match we are predicting. The dataset has the following statistics for each match:
 Each match contains the following post-match player stats:
 
-w_ace
-- winner's number of aces
-w_df
-- winner's number of doubles faults
-w_svpt
-- winner's number of serve points
-w_1stIn
-- winner's number of first serves made
-w_1stWon
-- winner's number of first-serve points won
-w_2ndWon
-- winner's number of second-serve points won
-w_SvGms
-- winner's number of serve games
-w_bpSaved
-- winner's number of break points saved
-w_bpFaced
-- winner's number of break points faced
+| Variable | Description |
+|---|---|
+| `w_ace` | Winner's number of aces |
+| `w_df` | Winner's number of double faults |
+| `w_svpt` | Winner's number of serve points |
+| `w_1stIn` | Winner's number of first serves made |
+| `w_1stWon` | Winner's number of first-serve points won |
+| `w_2ndWon` | Winner's number of second-serve points won |
+| `w_SvGms` | Winner's number of serve games |
+| `w_bpSaved` | Winner's number of break points saved |
+| `w_bpFaced` | Winner's number of break points faced |
+ 
 
 We can calculate the average of these statistics over, say, the last 30 matches for each player and then use the historical statistics to predict a future match.
 
