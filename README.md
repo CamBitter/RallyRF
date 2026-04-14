@@ -6,19 +6,19 @@ By Cam Bitter, Sebastian Pantzer, and Danny Smith.
 
 ## Abstract
 
-We aim to create a custom random forest classifier. We will build up from decision trees to random forests, and ideally explore further optimization techniques such as gradient boosting. We will explore the rest of the ML pipeline by applying our classifier onto historical tennis match data, where we will perform data analysis to generate helpful player statistic features. We will compare our results with a 2019 paper that achieves high match outcome prediction using random forests, logistic regression, and support vector machines.
+We aim to create a custom random forest classifier. We will build up from decision trees to random forests, and explore further optimization techniques such as gradient boosting. 
+
+We will explore the rest of the ML pipeline by performing data analysis on historical tennis match data to generate insightful player statistic features, which will be fed into our classifier to predict match outcomes. We will compare our results with a 2019 paper that achieves high match prediction accuracy using random forests, logistic regression, and support vector machines.
 
 ## Motivation and Question
 
-The main motivation behind this project is to learn an more advanced ML technique (that still holds up in modern times) in great detail by building it from the ground up.
+The main motivation behind this project is to learn an more advanced ML technique (that still holds up in modern times) in great detail by building it from the ground up. Random forests are widely popular and effective at medium sized tabular data, and are much more efficient than deep learning models.
 
-Tennis is a very hard sport to predict, with variables like mental state having huge implications on match outcome. By applying our custom random forest to a real-world prediction problem, we hope to learn about what affects the performance of the model we built.
+Tennis is a very hard sport to predict, with variables like mental state having huge implications on match outcome. By applying our custom random forest to a real-world prediction problem, we hope to learn about what affects the performance of the model we built and compare our model to research findings.
 
-[Jeff Sackmann's ATP Data Repository](https://github.com/jeffsackmann/tennis_atp)
+Our dataset is [JeffSackmann ATP Data Repository](https://github.com/jeffsackmann/tennis_atp). It contains ATP tennis match results spanning back to 1964, with over 40,000 matches. 
 
-...
-...
-...
+We may also use [Match Charting Project](https://github.com/JeffSackmann/tennis_MatchChartingProject), another tennis stats repository hosted on GitHub by JeffSackmann. This dataset contains better odds of major bookmarkers such as Betting365, which we can compare against our model predictions.
 
 ## Planned Deliverables
 
@@ -30,8 +30,29 @@ Tennis is a very hard sport to predict, with variables like mental state having 
 ## Resources Required
 
 **Data**: https://github.com/jeffsackmann/tennis_atp
+This data provides *post match* statistics for each match. Since we want to use stats to predict an unknown match outcome, we will need to perform some data analysis to collect statisics for each player prior to the match we are predicting. The dataset has the following statistics for each match:
+Each match contains the following post-match player stats:
 
-- This data does not come with all features we will want for each match, so we will need to implement data analysis prior to each match we predict.
+w_ace
+- winner's number of aces
+w_df
+- winner's number of doubles faults
+w_svpt
+- winner's number of serve points
+w_1stIn
+- winner's number of first serves made
+w_1stWon
+- winner's number of first-serve points won
+w_2ndWon
+- winner's number of second-serve points won
+w_SvGms
+- winner's number of serve games
+w_bpSaved
+- winner's number of break points saved
+w_bpFaced
+- winner's number of break points faced
+
+We can calculate the average of these statistics over, say, the last 30 matches for each player and then use the historical statistics to predict a future match.
 
 ## What we will learn
 
