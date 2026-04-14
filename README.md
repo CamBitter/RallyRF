@@ -54,10 +54,12 @@ We can calculate the average of these statistics over, say, the last 30 matches 
 
 ## What we will learn
 
-- Creation and implementation of custom model
-- General ML Pipeline
+We're excited to learn:
+- Creation and implementation of a custom model
+- Data preperation and analysis
 - Effective data visualization
-- Torch
+- Torch and Pandas
+- Comparison to research
 
 ## Risk Statement
 
