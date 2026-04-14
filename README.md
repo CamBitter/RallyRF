@@ -2,7 +2,8 @@
 
 Random forest ML classification applied to tennis match outcome prediction.
 
-By Cam Bitter, Sebastian Pantzer, and Danny Smith.
+**By**
+Cam Bitter, Sebastian Pantzer, and Danny Smith.
 
 ## Abstract
 
@@ -18,7 +19,7 @@ Tennis is a very hard sport to predict, with variables like mental state having 
 
 Our dataset is [JeffSackmann ATP Data Repository](https://github.com/jeffsackmann/tennis_atp). It contains ATP tennis match results spanning back to 1964, with over 40,000 matches. 
 
-We may also use [Match Charting Project](https://github.com/JeffSackmann/tennis_MatchChartingProject), another tennis stats repository hosted on GitHub by JeffSackmann. This dataset contains better odds of major bookmarkers such as Betting365, which we can compare against our model predictions.
+We may also use [Match Charting Project](https://github.com/JeffSackmann/tennis_MatchChartingProject), another tennis stats repository hosted on GitHub by JeffSackmann. This dataset contains tennis match betting odds of major bookmarkers such as Betting365, which we can compare against our model predictions.
 
 ## Planned Deliverables
 
@@ -34,6 +35,7 @@ That being said, we plan on a full success of our deliverables. A full success i
 ## Resources Required
 
 **Data**: https://github.com/jeffsackmann/tennis_atp
+
 This data provides *post match* statistics for each match. Since we want to use stats to predict an unknown match outcome, we will need to perform some data analysis to collect statisics for each player prior to the match we are predicting. The dataset has the following statistics for each match:
 Each match contains the following post-match player stats:
 
