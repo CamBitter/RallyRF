@@ -63,7 +63,13 @@ We're excited to learn:
 
 ## Risk Statement
 
-Most of the risk of this project is time (i.e. can we finish everything we want to in time). But, I believe we will not have an issue with this. The main project objective is to create a random forest classifier from scratch, not predict tennis match outcomes. If we just have enough time to complete the classifier, then we can bring in curated classification datasets to test our model against existing implementation (such as sklearn).
+One risk of this project is time (i.e. can we finish everything we want to in time). It has a relatively large scope: custom model, data preparation, comparisons to other models, etc.
+
+But, I believe we will not have an issue with this. The main project objective is to create a random forest classifier from scratch, not predict tennis match outcomes. If we just have enough time to complete the classifier, then we can bring in curated classification datasets to test our model against existing implementation (such as sklearn).
+
+Another risk is that that feature generation complexity may be more difficult to implement than expected. If we have to calculate pre-match stats for every single match we run through the model (say, 20,000 matches), and we derive these stats from say a 6 month timeframe, this could become a computationally heavy task. However, we would only need to perform this task once. We could join the derived statistics with each match we run our feature generation on.
+
+Another challenge is that amateur matchplay may have a very different set of important features than professional tennis. Thus, our model, having only been trained on professional matchplay, wouldn't generalize for amateur players. 
 
 ## Ethics Statement
 
