@@ -39,15 +39,15 @@ Each match contains the following post-match player stats:
 
 | Variable | Description |
 |---|---|
-| `w_ace` | Winner's number of aces |
-| `w_df` | Winner's number of double faults |
-| `w_svpt` | Winner's number of serve points |
-| `w_1stIn` | Winner's number of first serves made |
-| `w_1stWon` | Winner's number of first-serve points won |
-| `w_2ndWon` | Winner's number of second-serve points won |
-| `w_SvGms` | Winner's number of serve games |
-| `w_bpSaved` | Winner's number of break points saved |
-| `w_bpFaced` | Winner's number of break points faced |
+| w_ace | Winner's number of aces |
+| w_df | Winner's number of double faults |
+| w_svpt | Winner's number of serve points |
+| w_1stIn | Winner's number of first serves made |
+| w_1stWon | Winner's number of first-serve points won |
+| w_2ndWon | Winner's number of second-serve points won |
+| w_SvGms | Winner's number of serve games |
+| w_bpSaved | Winner's number of break points saved |
+| w_bpFaced | Winner's number of break points faced |
  
 
 We can calculate the average of these statistics over, say, the last 30 matches for each player and then use the historical statistics to predict a future match.
