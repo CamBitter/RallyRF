@@ -27,6 +27,10 @@ We may also use [Match Charting Project](https://github.com/JeffSackmann/tennis_
 - Jupyter notebook: Implementation of our model on our collected training data
 - Jupyter notebook: Comparison of our results to other models (logistic regression, support vector machines, big CNN?)
 
+
+A partial success would involve implementing a decision tree and random forest to assess our research goal, and comparing them to a logistic regression model, but might not include expanding our project with more advanced features and models. Due to time constraints, we might not be able to include various visualizations of our data. A partial success will involve a comparison between a machine learning technique that is new to us and a technique that we have learned in class. 
+
+That being said, we plan on a full success of our deliverables. A full success includes developing the models mentioned in the partial success part, but building on our learning by implementing a boosted decision tree. We would also include a deeper library of models to compare with, like support vector machines and a convolutional neural network. A full success would include helpful visualizations that outline details like differences in model performance and feature properties. A full success would encapsulate the above material in a dense but digestible manner.
 ## Resources Required
 
 **Data**: https://github.com/jeffsackmann/tennis_atp
