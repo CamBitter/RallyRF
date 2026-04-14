@@ -31,7 +31,7 @@ Tennis is a very hard sport to predict, with variables like mental state having 
 
 **Data**: https://github.com/jeffsackmann/tennis_atp
 
-- This data does not come with all features we will want for each match, so we will need to implement data analysis prior to each match we predict or use an existing library
+- This data does not come with all features we will want for each match, so we will need to implement data analysis prior to each match we predict.
 
 ## What we will learn
 
