@@ -1,6 +1,6 @@
 # Resources
 
-###This file contains resources used for our project.
+##This file contains resources used for our project.
 
 https://www.youtube.com/watch?v=ZVR2Way4nwQ
 https://www.youtube.com/watch?v=_L39rN6gz7Y
