@@ -3,7 +3,7 @@ import glob
 import os
 
 # Point to your folder
-folder_path = r"C:\Users\ppant\Downloads\ML S26\RallyRF\tennis_atp"
+folder_path = "data/tennis_atp/"
 
 # Grab all CSV files in the folder
 csv_files = glob.glob(os.path.join(folder_path, "atp_matches_2*.csv"))
