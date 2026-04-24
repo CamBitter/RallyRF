@@ -174,6 +174,8 @@ class DecisionTree:
 
 
 if __name__ == "__main__":
+    # Demo decision tree on penguin dataset
+
     from sklearn.model_selection import train_test_split
     import pandas as pd
 
