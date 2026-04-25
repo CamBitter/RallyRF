@@ -4,10 +4,10 @@ import glob
 import os
 
 def getDF():
-    # Point to your folder
+    # Point to folder
     folder_path = "data/tennis_atp/"
 
-    # Grab all CSV files in the folder
+    # all CSV files in the folder
     csv_files = glob.glob(os.path.join(folder_path, "atp_matches_2*.csv"))
 
     csv_files_futures = glob.glob(os.path.join(folder_path, "atp_matches_futures_2*.csv"))

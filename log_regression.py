@@ -7,149 +7,108 @@ import torch
 import torch.nn.functional as F
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+from data import getDF, getPlayerStatLastYrAvg
 
-# Pipeline
+# read in data:
 
-class DataPrepPipeline:
-    def __init__(self):
-        self.tfidf_vectorizer = TfidfVectorizer(max_features=50000, min_df=5)
-        self.one_hot_encoder  = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
-        self.scaler           = StandardScaler()
+def build_features(df):
+    rows = []
+    labels = []
 
-    def fit(self, X, y=None):
-        self.tfidf_vectorizer.fit(X['lyrics'])
-        self.one_hot_encoder.fit(X[['topic']])
-        self.numeric_cols = [c for c in X.columns if c not in ['lyrics', 'topic', 'track_name']]
-        self.scaler.fit(X[self.numeric_cols])
-        return self
+    for _, match in df.iterrows():
+        date   = match["tourney_date"]
+        p1     = match["winner_name"]
+        p2     = match["loser_name"]
 
-    def transform(self, X):
-        X_transformed = X.copy()
-        if 'genre' in X_transformed.columns:
-            X_transformed = X_transformed.drop(columns=['genre'])
+        def stat(player, s):
+            return getPlayerStatLastYrAvg(df, player, date, s)
 
-        # scale numeric columns first, then engineer features from scaled values
-        X_transformed[self.numeric_cols] = self.scaler.transform(X_transformed[self.numeric_cols])
+        features = {
+            "rank_diff":      (match["winner_rank"]      or 0) - (match["loser_rank"]      or 0),
+            "rank_pts_diff":  (match["winner_rank_pts"]  or 0) - (match["loser_rank_pts"]  or 0),
+            "ace_diff":       (stat(p1, "ace")           or 0) - (stat(p2, "ace")           or 0),
+            "df_diff":        (stat(p1, "df")            or 0) - (stat(p2, "df")            or 0),
+            "svpt_diff":      (stat(p1, "svpt")          or 0) - (stat(p2, "svpt")          or 0),
+            "1stIn_diff":     (stat(p1, "1stIn")         or 0) - (stat(p2, "1stIn")         or 0),
+            "1stWon_diff":    (stat(p1, "1stWon")        or 0) - (stat(p2, "1stWon")        or 0),
+            "2ndWon_diff":    (stat(p1, "2ndWon")        or 0) - (stat(p2, "2ndWon")        or 0),
+            "age_diff":       (match["winner_age"]       or 0) - (match["loser_age"]        or 0),
+        }
 
-        # engineered features
-        X_transformed['hype']                = (X_transformed['danceability'] * X_transformed['energy']) + X_transformed['loudness']
-        X_transformed['emotionness']         = (X_transformed['sadness'] + X_transformed['dating']) * X_transformed['feelings']
-        X_transformed['intensity']           = X_transformed['violence'] + X_transformed['obscene'] + X_transformed['shake the audience']
-        X_transformed['spirituality']        = X_transformed['family/gospel'] + X_transformed['family/spiritual']
-        X_transformed['contrast']            = X_transformed['romantic'] - X_transformed['violence']
-        X_transformed['night-energy']        = X_transformed['night/time'] * X_transformed['danceability']
-        X_transformed['vibe']                = X_transformed['valence'] * X_transformed['energy']
-        X_transformed['performance']         = X_transformed['shake the audience'] + X_transformed['music'] + X_transformed['movement/places']
-        X_transformed['softness']            = X_transformed['acousticness'] * (1 - X_transformed['energy'])
-        X_transformed['chill']               = X_transformed['romantic'] * X_transformed['acousticness']
-        X_transformed['vintage']             = X_transformed['age'] * X_transformed['acousticness']
-        X_transformed['modern']              = (1 - X_transformed['age']) * X_transformed['energy']
-        X_transformed['dense_lyrics']        = X_transformed['len'] * (1 - X_transformed['instrumentalness'])
+        # surface one-hot
+        for col in ["match_type_main", "match_type_futures", "match_type_challenger"]:
+            features[col] = match.get(col, 0)
 
-        # text and categorical features
-        lyrics_tfidf = self.tfidf_vectorizer.transform(X_transformed['lyrics'])
-        tfidf_df = pd.DataFrame(
-            lyrics_tfidf.toarray(),
-            columns=self.tfidf_vectorizer.get_feature_names_out(),
-            index=X_transformed.index
-        )
-        topic_encoded = self.one_hot_encoder.transform(X_transformed[['topic']])
-        topic_df = pd.DataFrame(
-            topic_encoded,
-            columns=self.one_hot_encoder.get_feature_names_out(['topic']),
-            index=X_transformed.index
-        )
+        rows.append(features)
+        labels.append(1)  # winner is always p1 in this dataset
 
-        X_transformed = X_transformed.drop(columns=['lyrics', 'topic', 'track_name'])
-        return pd.concat([X_transformed, tfidf_df, topic_df], axis=1)
+    # randomly flip ~50% of rows so model doesn't just learn "row order = winner"
+    X_df = pd.DataFrame(rows).fillna(0)
+    y    = np.array(labels, dtype=np.float32)
 
-# Model
+    flip = np.random.rand(len(y)) > 0.5
+    X_df.loc[flip] = X_df.loc[flip] * -1   # negate diffs to swap perspective
+    y[flip] = 0                              # flipped rows: loser perspective = label 0
+
+    return X_df, y
+
     
-# adapted from lecture 9: Multinomial Classification
+# adapted from lecture 7: Assessment of Classifiers
 
-def softmax_rows(S, dim=-1):
-    exp_S = torch.exp(S)
-    return exp_S / torch.sum(exp_S, dim=dim, keepdim=True)
+def binary_cross_entropy(q, y, model, lambda_reg=0.001):
+    loss = -(y * torch.log(q) + (1 - y) * torch.log(1 - q)).mean()
+    return loss + lambda_reg * torch.sum(model.w ** 2) 
 
-def cross_entropy_loss(Q, Y, model, lambda_reg=0.001):
-    Q_clamped  = torch.clamp(Q, min=1e-7)
-    ce_loss    = -torch.mean(Y * torch.log(Q_clamped))
-    l2_penalty = torch.sum(model.W ** 2)
-    return ce_loss + lambda_reg * l2_penalty
+def sigmoid(z): 
+    return 1 / (1 + torch.exp(-z))
 
-class GenreModel:
-    def __init__(self, d_features, k_classes):
-        self.W = torch.randn(d_features, k_classes) * 0.01
+# model class
+class BinaryLogisticRegression: 
+    def __init__(self, n_features): 
+        self.w = torch.zeros(n_features, 1, requires_grad=True)
 
-    def forward(self, X):
-        if not isinstance(X, torch.Tensor):
-            X = torch.tensor(X.values, dtype=torch.float32)
-        return softmax_rows(X @ self.W, dim=1)
+    def forward(self, X): 
+        return sigmoid(X @ self.w)    
 
-class GradientDescentOptimizer:
-    def __init__(self, model, learning_rate=0.01):
-        self.model         = model
-        self.learning_rate = learning_rate
+# optimizer class
+class GradientDescentOptimizer: 
+    def __init__(self, model, lr=0.1): 
+        self.model = model
+        self.lr = lr
 
-    def step(self, X, y):
-        self.model.W -= self.learning_rate * self.grad_func(X, y)
-
-    def grad_func(self, X, y):
+    def grad_func(self, X, y): 
         q = self.model.forward(X)
-        return X.T @ (q - y) / X.shape[0]
+        return 1/X.shape[0] * ((q - y).T @ X).T
+        
+    def step(self, X, y): 
+        grad = self.grad_func(X, y)
+        with torch.no_grad(): 
+            self.model.w -= self.lr * grad
 
 # Main
 
 if __name__ == "__main__":
 
-    # load data
-    url   = "https://middcs.github.io/csci-0451-s26/data/music-genre/train.csv"
-    train = pd.read_csv(url)
+    df = getDF()
 
-    X_df = train.drop(columns=["genre"])
-    y_df = train["genre"]
+    X_df, y = build_features(df)
 
-    # split for local evaluation
-    X_train, X_test, y_train, y_test = train_test_split(X_df, y_df, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X_df, y, test_size=0.2, random_state=42)
 
-    pipeline = DataPrepPipeline()
-    pipeline.fit(X_train)
-    with open("pipeline.pkl", "wb") as f:
-        pickle.dump(pipeline, f)
+    scaler          = StandardScaler()
+    X_train_scaled  = scaler.fit_transform(X_train)
+    X_test_scaled   = scaler.transform(X_test)
 
-    X_train_processed = pipeline.transform(X_train)
-    X_test_processed  = pipeline.transform(X_test)
+    device         = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(device)
+    y_train_tensor = torch.tensor(y_train).unsqueeze(1).to(device)  # (n, 1)
 
-    # fit and save the data prep pipeline on FULL dataset
-    pipeline = DataPrepPipeline()
-    pipeline.fit(X_df)
-    with open("pipeline.pkl", "wb") as f:
-        pickle.dump(pipeline, f)
-
-    # apply pipeline to full dataset
-    X_train_processed = pipeline.transform(X_df)
-
-    # device setup
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-
-    # encode labels on full dataset
-    label_encoder   = LabelEncoder()
-    y_train_encoded = label_encoder.fit_transform(y_df)
-    num_genres      = len(label_encoder.classes_)
-
-    # build tensors
-    y_train_one_hot = F.one_hot(torch.tensor(y_train_encoded), num_classes=num_genres).float().to(device)
-    X_train_tensor  = torch.tensor(X_train_processed.values, dtype=torch.float32).to(device)
-
-
-    torch.manual_seed(42)
-    d_features = X_train_processed.shape[1]
-    model      = GenreModel(d_features=d_features, k_classes=num_genres)
-    model.W    = model.W.to(device)
-    opt        = GradientDescentOptimizer(model, learning_rate=0.0005)
+    d_features = X_train_tensor.shape[1]
+    model      = BinaryLogisticRegression(d_features)
+    model.w    = model.w.to(device)
+    opt        = GradientDescentOptimizer(model, lr=0.01)
 
     # training loop
     batch_size = 64
@@ -159,15 +118,15 @@ if __name__ == "__main__":
     for epoch in range(25000):
         perm            = torch.randperm(n_samples, device=device)
         X_train_tensor  = X_train_tensor[perm]
-        y_train_one_hot = y_train_one_hot[perm]
+        y_train_tensor = y_train_tensor[perm]
 
         epoch_loss, num_batches = 0.0, 0
 
         for start in range(0, n_samples, batch_size):
             X_batch = X_train_tensor[start:start + batch_size]
-            y_batch = y_train_one_hot[start:start + batch_size]
+            y_batch = y_train_tensor[start:start + batch_size]
 
-            loss        = cross_entropy_loss(model.forward(X_batch), y_batch, model)
+            loss        = binary_cross_entropy(model.forward(X_batch), y_batch, model)
             epoch_loss  += loss.item()
             num_batches += 1
 
@@ -179,9 +138,3 @@ if __name__ == "__main__":
         if (epoch + 1) % 1000 == 0:
             print(f"Epoch {epoch + 1}/27500, Loss: {avg_loss:.4f}")
 
-    print("Training complete.")
-    print(f"Final Loss: {losses[-1]:.4f}")
-
-    # save model
-    with open("model.pkl", "wb") as f:
-        pickle.dump(model, f)
