@@ -5,7 +5,7 @@ import os
 
 def getDF():
     # Point to folder
-    folder_path = "data/tennis_atp/"
+    folder_path = "data/tennis_atp/matches/"
 
     # all CSV files in the folder
     csv_files = glob.glob(os.path.join(folder_path, "atp_matches_2*.csv"))
