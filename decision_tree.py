@@ -49,7 +49,7 @@ class DecisionTree:
             return self.predict_item(node.right, x)
 
     def fit(self, X, Y):
-        """Starts recursive building of decision tree"""
+        """Starts recursive building of decision tree, fits dataset to tree"""
 
         dataset = np.concat([X, Y], axis=1)
         self.root = self.build_tree(dataset, curr_depth=0)
@@ -103,7 +103,7 @@ class DecisionTree:
     def get_best_split(self, dataset, num_features):
         """Returns the best split feature and value given a dataset based on Gini information gain."""
 
-        best_split = {}
+        best_split = {"info_gain": 0}
         max_info_gain = float("-inf")
         X = dataset[:, :-1]
 
@@ -182,7 +182,15 @@ if __name__ == "__main__":
     url = "https://raw.githubusercontent.com/PhilChodrow/ml-notes/main/data/palmer-penguins/palmer-penguins.csv"
     df = pd.read_csv(url)
 
-    X = df[["Culmen Length (mm)", "Culmen Depth (mm)"]].to_numpy()
+    feature_cols = [
+        "Culmen Length (mm)",
+        "Culmen Depth (mm)",
+        "Flipper Length (mm)",
+        "Body Mass (g)",
+    ]
+    df = df.dropna(subset=feature_cols + ["Species"])
+
+    X = df[feature_cols].to_numpy()
     Y = np.vstack(df["Species"].to_numpy())
 
     Y_id_to_label = np.unique(Y)
@@ -190,10 +198,10 @@ if __name__ == "__main__":
     Y = np.vstack(np.array([Y_label_to_id[label.item()] for label in Y]))
 
     X_train, X_val, Y_train, Y_val = train_test_split(
-        X, Y, test_size=0.2, random_state=99
+        X, Y, test_size=0.5, random_state=99
     )
 
-    tree = DecisionTree()
+    tree = DecisionTree(min_samples=2, max_depth=10)
     tree.fit(X_train, Y_train)
 
     Y_pred = tree.forward(X_val)
@@ -206,4 +214,4 @@ if __name__ == "__main__":
     accuracy = accuracy / len(Y_pred)
     print(accuracy)
 
-    tree.print_tree()
+    # tree.print_tree()
