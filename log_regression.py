@@ -18,39 +18,25 @@ def build_features(df):
     labels = []
 
     for _, match in df.iterrows():
-        date   = match["tourney_date"]
-        p1     = match["winner_name"]
-        p2     = match["loser_name"]
-
-        def stat(player, s):
-            return getPlayerStatLastYrAvg(df, player, date, s)
-
         features = {
-            "rank_diff":      (match["winner_rank"]      or 0) - (match["loser_rank"]      or 0),
-            "rank_pts_diff":  (match["winner_rank_pts"]  or 0) - (match["loser_rank_pts"]  or 0),
-            "ace_diff":       (stat(p1, "ace")           or 0) - (stat(p2, "ace")           or 0),
-            "df_diff":        (stat(p1, "df")            or 0) - (stat(p2, "df")            or 0),
-            "svpt_diff":      (stat(p1, "svpt")          or 0) - (stat(p2, "svpt")          or 0),
-            "1stIn_diff":     (stat(p1, "1stIn")         or 0) - (stat(p2, "1stIn")         or 0),
-            "1stWon_diff":    (stat(p1, "1stWon")        or 0) - (stat(p2, "1stWon")        or 0),
-            "2ndWon_diff":    (stat(p1, "2ndWon")        or 0) - (stat(p2, "2ndWon")        or 0),
-            "age_diff":       (match["winner_age"]       or 0) - (match["loser_age"]        or 0),
+            "rank_diff":     (match["winner_rank"]        or 0) - (match["loser_rank"]        or 0),
+            "rank_pts_diff": (match["winner_rank_points"] or 0) - (match["loser_rank_points"] or 0),
+            "age_diff":      (match["winner_age"]         or 0) - (match["loser_age"]         or 0),
         }
 
-        # surface one-hot
         for col in ["match_type_main", "match_type_futures", "match_type_challenger"]:
             features[col] = match.get(col, 0)
 
         rows.append(features)
-        labels.append(1)  # winner is always p1 in this dataset
+        labels.append(1)
 
-    # randomly flip ~50% of rows so model doesn't just learn "row order = winner"
     X_df = pd.DataFrame(rows).fillna(0)
     y    = np.array(labels, dtype=np.float32)
 
     flip = np.random.rand(len(y)) > 0.5
-    X_df.loc[flip] = X_df.loc[flip] * -1   # negate diffs to swap perspective
-    y[flip] = 0                              # flipped rows: loser perspective = label 0
+    diff_cols = ["rank_diff", "rank_pts_diff", "age_diff"]
+    X_df.loc[flip, diff_cols] *= -1
+    y[flip] = 0
 
     return X_df, y
 
@@ -86,22 +72,38 @@ class GradientDescentOptimizer:
         grad = self.grad_func(X, y)
         with torch.no_grad(): 
             self.model.w -= self.lr * grad
+        
+def get_device():
+    if torch.cuda.is_available():
+        return "cuda"
+    elif torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 
 # Main
 
 if __name__ == "__main__":
+    print("getting data")
 
     df = getDF()
+    print("data wrangled!")
 
     X_df, y = build_features(df)
 
+    print("dataset built")
+
     X_train, X_test, y_train, y_test = train_test_split(X_df, y, test_size=0.2, random_state=42)
+
+    print("scaling features")
 
     scaler          = StandardScaler()
     X_train_scaled  = scaler.fit_transform(X_train)
     X_test_scaled   = scaler.transform(X_test)
 
-    device         = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
+    print(f"Running on {device}")
     X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(device)
     y_train_tensor = torch.tensor(y_train).unsqueeze(1).to(device)  # (n, 1)
 
@@ -115,7 +117,7 @@ if __name__ == "__main__":
     n_samples  = X_train_tensor.shape[0]
     losses     = []
 
-    for epoch in range(25000):
+    for epoch in range(50):
         perm            = torch.randperm(n_samples, device=device)
         X_train_tensor  = X_train_tensor[perm]
         y_train_tensor = y_train_tensor[perm]
@@ -135,6 +137,17 @@ if __name__ == "__main__":
         avg_loss = epoch_loss / num_batches
         losses.append(avg_loss)
 
-        if (epoch + 1) % 1000 == 0:
+        if (epoch + 1) % 10 == 0:
             print(f"Epoch {epoch + 1}/27500, Loss: {avg_loss:.4f}")
+
+    # Evaluate on test set
+    X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32).to(device)
+    y_test_tensor = torch.tensor(y_test, dtype=torch.float32).to(device)
+
+    with torch.no_grad():
+        test_probs = model.forward(X_test_tensor).squeeze()
+        test_preds = (test_probs >= 0.5).float()
+        accuracy   = (test_preds == y_test_tensor).float().mean().item()
+
+    print(f"\nTest Accuracy: {accuracy * 100:.2f}%")
 
