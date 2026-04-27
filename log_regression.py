@@ -13,6 +13,7 @@ from data import getDF, getPlayerStatLastYrAvg
 
 # read in data:
 
+# this is a truncated version since using the whole data was taking forever
 def build_features(df):
     rows = []
     labels = []
@@ -73,6 +74,7 @@ class GradientDescentOptimizer:
         with torch.no_grad(): 
             self.model.w -= self.lr * grad
         
+# copied from previous project, not ever running this on colab but not harmful to have
 def get_device():
     if torch.cuda.is_available():
         return "cuda"
@@ -85,6 +87,7 @@ def get_device():
 # Main
 
 if __name__ == "__main__":
+    # was taking forever so i printed a lot
     print("getting data")
 
     df = getDF()
@@ -117,6 +120,7 @@ if __name__ == "__main__":
     n_samples  = X_train_tensor.shape[0]
     losses     = []
 
+    # proof of concept run with very few epochs
     for epoch in range(50):
         perm            = torch.randperm(n_samples, device=device)
         X_train_tensor  = X_train_tensor[perm]
@@ -140,7 +144,8 @@ if __name__ == "__main__":
         if (epoch + 1) % 10 == 0:
             print(f"Epoch {epoch + 1}/27500, Loss: {avg_loss:.4f}")
 
-    # Evaluate on test set
+    # evaluate on test set
+    # currently bad, could be improved for much longer run
     X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32).to(device)
     y_test_tensor = torch.tensor(y_test, dtype=torch.float32).to(device)
 
