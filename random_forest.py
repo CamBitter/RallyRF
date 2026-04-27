@@ -38,7 +38,7 @@ class RandomForestClassifier:
     def forward(self, X):
         """Predict class labels by majority vote across all trees"""
 
-        # Each tree only sees the columns it was trained on. bincount needs ints.
+        # Get predictions from each tree for its respective feature subset
         preds_per_tree = np.array([
             tree.forward(X[:, features])
             for tree, features in zip(self.trees, self.tree_features)
