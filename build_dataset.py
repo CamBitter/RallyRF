@@ -26,6 +26,7 @@ import time
 # bp_converted_pct : (opp_bpf - opp_bps) / opp_bpf  (break points converted as returner)
 # win_pct          : matches won / matches played
 # surface_win_pct  : matches won / matches played on the current surface
+# games_played     : total matches played in the window (activity/injury proxy)
 
 
 def getDF():
@@ -38,9 +39,9 @@ def getDF():
     return df
 
 
-def six_months_ago(date_int):
+def one_year_ago(date_int):
     d = pd.to_datetime(str(date_int), format="%Y%m%d")
-    return int((d - pd.DateOffset(months=6)).strftime("%Y%m%d"))
+    return int((d - pd.DateOffset(months=12)).strftime("%Y%m%d"))
 
 
 def nan_diff(a, b):
@@ -60,14 +61,14 @@ def build_player_index(df):
 
 
 def rolling_stats(player_index, player_name, surface, before_date):
-    cutoff = six_months_ago(before_date)
+    cutoff = one_year_ago(before_date)
     all_matches = player_index.get(player_name, [])
     window = [m for m in all_matches if cutoff <= m["tourney_date"] < before_date]
 
     if not window:
         return {s: np.nan for s in [
             "ace_vs_df", "first_in", "first_won", "second_won",
-            "bp_saved_pct", "bp_converted_pct", "win_pct", "surface_win_pct",
+            "bp_saved_pct", "bp_converted_pct", "win_pct", "surface_win_pct", "games_played",
         ]}
 
     player_df = pd.DataFrame(window)
@@ -75,7 +76,7 @@ def rolling_stats(player_index, player_name, surface, before_date):
     if player_df.empty:
         return {s: np.nan for s in [
             "ace_vs_df", "first_in", "first_won", "second_won",
-            "bp_saved_pct", "bp_converted_pct", "win_pct", "surface_win_pct",
+            "bp_saved_pct", "bp_converted_pct", "win_pct", "surface_win_pct", "games_played",
         ]}
 
     w = player_df[player_df["winner_name"] == player_name]
@@ -109,6 +110,7 @@ def rolling_stats(player_index, player_name, surface, before_date):
         "bp_converted_pct":  ((opp_bpf.sum() - opp_bps.sum()) / opp_bpf.sum()) if opp_bpf.sum() > 0 else np.nan,
         "win_pct":           len(w) / len(player_df),
         "surface_win_pct":   surface_win_pct,
+        "games_played":      len(player_df),
     }
 
 
@@ -160,6 +162,7 @@ def build(df):
             "bp_saved_pct_diff":     nan_diff(s1["bp_saved_pct"],      s2["bp_saved_pct"]),
             "bp_converted_pct_diff": nan_diff(s1["bp_converted_pct"],  s2["bp_converted_pct"]),
             "win_pct_diff":          nan_diff(s1["win_pct"],           s2["win_pct"]),
+            "games_played_diff":     nan_diff(s1["games_played"],      s2["games_played"]),
         }
 
         rows.append(row)
