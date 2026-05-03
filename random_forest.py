@@ -3,13 +3,14 @@ import numpy as np
 import pandas as pd
 
 class RandomForestClassifier:
-    def __init__(self, num_trees, num_features, max_depth, random_state):
+    def __init__(self, num_trees, num_features, max_depth, random_state, verbose=False):
         """Initialize the random forest classifier"""
 
         self.num_trees = num_trees
         self.num_features = num_features
         self.max_depth = max_depth
         self.random_state = random_state
+        self.verbose = verbose
 
     def fit(self, X, Y):
         """Fit the random forest classifier to the training data"""
@@ -20,8 +21,10 @@ class RandomForestClassifier:
 
         total_features = X.shape[1]
 
-        for _ in range(self.num_trees):
-            # Bootstrap sampling with replacement 
+        for i in range(self.num_trees):
+            if self.verbose:
+                print(f"  fitting tree {i + 1}/{self.num_trees}...")
+            # Bootstrap sampling with replacement
             row_indices = np.random.choice(len(X), size=len(X), replace=True)
             # Feature bagging: each tree gets a random subset of columns
             feature_indices = np.random.choice(total_features, size=self.num_features, replace=False)
@@ -35,7 +38,7 @@ class RandomForestClassifier:
             self.trees.append(tree)
             self.tree_features.append(feature_indices)
 
-    def forward(self, X):
+    def predict(self, X):
         """Predict class labels by majority vote across all trees"""
 
         # Get predictions from each tree for its respective feature subset
@@ -86,7 +89,7 @@ if __name__ == "__main__":
     )
     forest.fit(X_train, Y_train)
 
-    Y_pred = forest.forward(X_val)
+    Y_pred = forest.predict(X_val)
     accuracy = 0
 
     for i in range(len(Y_pred)):
