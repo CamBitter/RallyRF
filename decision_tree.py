@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class Node:
     def __init__(
         self,
@@ -132,9 +131,16 @@ class DecisionTree:
 
     def split(self, dataset, feature, value):
         """Splits the dataset at a given feature by a value"""
-        
-        left = np.array([row for row in dataset if row[feature] <= value])
-        right = np.array([row for row in dataset if row[feature] > value])
+
+        # Optimization: 0.5 seconds
+        # https://stackoverflow.com/a/19004390/14160036
+        condition = dataset[:, feature] <= value
+        left = dataset[condition]
+        right = dataset[~condition]
+
+        # Pre-optimization: 9.17 seconds
+        # left = np.array([row for row in dataset if row[feature] <= value])
+        # right = np.array([row for row in dataset if row[feature] > value])
 
         return left, right
 
@@ -149,6 +155,7 @@ class DecisionTree:
     def gini(self, y):
         """Calculates Gini Impurity of an array of class labels. Lower impurity indicates higher quality classification"""
 
+        print(y)
         num_classes = np.unique(y)
         sum = 0
         for class_ in num_classes:
@@ -156,6 +163,18 @@ class DecisionTree:
             sum += class_probability**2
 
         gini = 1 - sum
+        return gini
+    
+    def binary_gini(self, y):
+        """
+            Calculates Gini Impurity of an array of binary class labels. Optimized for binary classification
+            Increases gini processing time by over 700%
+        """
+
+        prob_1 = y.sum() / len(y) 
+        prob_0 = 1 - prob_1
+        gini = 1 - (prob_0**2 + prob_1**2)
+    
         return gini
 
     def information_gain(self, parent, left, right):
@@ -166,8 +185,8 @@ class DecisionTree:
         weight_right = len(right) / len(parent)
 
         # Calculate weighted information gain by gini impurity
-        info_gain = self.gini(parent) - (
-            (weight_left * self.gini(left)) + (weight_right * self.gini(right))
+        info_gain = self.binary_gini(parent) - (
+            (weight_left * self.binary_gini(left)) + (weight_right * self.binary_gini(right))
         )
 
         return info_gain
