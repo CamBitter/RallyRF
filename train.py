@@ -18,7 +18,6 @@ FEATURE_COLS = [
     "bp_converted_pct_diff",
     "win_pct_diff",
     "games_played_diff",
-    "rank_diff"
 ]
 
 df = pd.read_csv("data/cleaned/atp_match_features_2.csv")
@@ -28,7 +27,7 @@ train_df = df[df["tourney_date"] < 20220101]
 test_df  = df[df["tourney_date"] >= 20220101]
 
 if not use_sklearn:
-    train_df = train_df.sample(n=5000, random_state=99)
+    train_df = train_df.sample(n=2000, random_state=99)
 
 X_train = train_df[FEATURE_COLS].to_numpy()
 Y_train = train_df["p1_won"].to_numpy()
@@ -53,9 +52,9 @@ if use_sklearn:
 else:
     print("\nUsing custom RandomForestClassifier...")
     forest = RandomForestClassifier(
-        num_trees=5,
+        num_trees=10,
         num_features=6,
-        max_depth=5,
+        max_depth=10,
         random_state=99,
         verbose=verbose,
     )
@@ -67,7 +66,7 @@ forest.fit(X_train, Y_train_fit)
 print(f"Fit done in {time.time() - t0:.3f}s")
 
 t1 = time.time()
-Y_pred = forest.predict(X_test) if use_sklearn else forest.forward(X_test)
+Y_pred = forest.predict(X_test)
 print(f"Inference done in {time.time() - t1:.3f}s")
 
 accuracy = (Y_pred == Y_test).sum() / len(Y_test)
