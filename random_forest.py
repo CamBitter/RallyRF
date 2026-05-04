@@ -1,6 +1,5 @@
 from decision_tree import DecisionTree
-import numpy as np 
-import pandas as pd
+import numpy as np
 
 class RandomForestClassifier:
     def __init__(self, num_trees, num_features, max_depth, random_state, verbose=False):
@@ -45,7 +44,7 @@ class RandomForestClassifier:
         preds_per_tree = np.array([
             tree.forward(X[:, features])
             for tree, features in zip(self.trees, self.tree_features)
-        ]).astype(int)
+        ], dtype=int)
         preds_per_sample = preds_per_tree.T
 
         y_pred = [np.argmax(np.bincount(votes)) for votes in preds_per_sample]
