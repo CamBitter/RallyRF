@@ -15,36 +15,31 @@ from data import getDF, getPlayerStatLastYrAvg
 
 # this is a truncated version since using the whole data was taking forever
 def build_features(df):
-    rows = []
-    labels = []
+    feature_cols = [
+        "rank_diff",
+        "rank_pts_diff",
+        "age_diff",
+        "height_diff",
+        "surface_win_pct_diff",
+        "ace_vs_df_diff",
+        "first_in_diff",
+        "first_won_diff",
+        "second_won_diff",
+        "bp_saved_pct_diff",
+        "bp_converted_pct_diff",
+        "win_pct_diff",
+        "games_played_diff"
+    ]
 
-    for _, match in df.iterrows():
-        features = {
-            "rank_diff":     (match["winner_rank"]        or 0) - (match["loser_rank"]        or 0),
-            "rank_pts_diff": (match["winner_rank_points"] or 0) - (match["loser_rank_points"] or 0),
-            "age_diff":      (match["winner_age"]         or 0) - (match["loser_age"]         or 0),
-        }
-
-        for col in ["match_type_main", "match_type_futures", "match_type_challenger"]:
-            features[col] = match.get(col, 0)
-
-        rows.append(features)
-        labels.append(1)
-
-    X_df = pd.DataFrame(rows).fillna(0)
-    y    = np.array(labels, dtype=np.float32)
-
-    flip = np.random.rand(len(y)) > 0.5
-    diff_cols = ["rank_diff", "rank_pts_diff", "age_diff"]
-    X_df.loc[flip, diff_cols] *= -1
-    y[flip] = 0
+    X_df = df[feature_cols].fillna(0)
+    y = df["p1_won"].astype(float).values
 
     return X_df, y
 
     
 # adapted from lecture 7: Assessment of Classifiers
 
-def binary_cross_entropy(q, y, model, lambda_reg=0.001):
+def binary_cross_entropy(q, y, model, lambda_reg=0.1):
     loss = -(y * torch.log(q) + (1 - y) * torch.log(1 - q)).mean()
     return loss + lambda_reg * torch.sum(model.w ** 2) 
 
@@ -55,9 +50,10 @@ def sigmoid(z):
 class BinaryLogisticRegression: 
     def __init__(self, n_features): 
         self.w = torch.zeros(n_features, 1, requires_grad=True)
+        self.b = torch.zeros(1, requires_grad=True)
 
     def forward(self, X): 
-        return sigmoid(X @ self.w)    
+        return sigmoid(X @ self.w + self.b)    
 
 # optimizer class
 class GradientDescentOptimizer: 
@@ -67,13 +63,15 @@ class GradientDescentOptimizer:
 
     def grad_func(self, X, y): 
         q = self.model.forward(X)
-        return 1/X.shape[0] * ((q - y).T @ X).T
+        return 1/X.shape[0] * (X.T @ (q - y))
         
     def step(self, X, y): 
         grad = self.grad_func(X, y)
+        grad_b = (self.model.forward(X) - y).mean()
         with torch.no_grad(): 
             self.model.w -= self.lr * grad
-        
+            self.model.b -= self.lr * grad_b
+
 # copied from previous project, not ever running this on colab but not harmful to have
 def get_device():
     if torch.cuda.is_available():
@@ -90,7 +88,7 @@ if __name__ == "__main__":
     # was taking forever so i printed a lot
     print("getting data")
 
-    df = getDF()
+    df = pd.read_csv("data/cleaned/atp_match_features_2.csv")
     print("data wrangled!")
 
     X_df, y = build_features(df)
@@ -108,12 +106,12 @@ if __name__ == "__main__":
     device = get_device()
     print(f"Running on {device}")
     X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(device)
-    y_train_tensor = torch.tensor(y_train).unsqueeze(1).to(device)  # (n, 1)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1).to(device)
 
     d_features = X_train_tensor.shape[1]
     model      = BinaryLogisticRegression(d_features)
     model.w    = model.w.to(device)
-    opt        = GradientDescentOptimizer(model, lr=0.01)
+    opt        = GradientDescentOptimizer(model, lr=0.05)
 
     # training loop
     batch_size = 64
@@ -131,7 +129,6 @@ if __name__ == "__main__":
         for start in range(0, n_samples, batch_size):
             X_batch = X_train_tensor[start:start + batch_size]
             y_batch = y_train_tensor[start:start + batch_size]
-
             loss        = binary_cross_entropy(model.forward(X_batch), y_batch, model)
             epoch_loss  += loss.item()
             num_batches += 1
@@ -148,6 +145,7 @@ if __name__ == "__main__":
     # currently bad, could be improved for much longer run
     X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32).to(device)
     y_test_tensor = torch.tensor(y_test, dtype=torch.float32).to(device)
+    y_test_tensor = y_test_tensor.unsqueeze(1)
 
     with torch.no_grad():
         test_probs = model.forward(X_test_tensor).squeeze()
@@ -155,4 +153,6 @@ if __name__ == "__main__":
         accuracy   = (test_preds == y_test_tensor).float().mean().item()
 
     print(f"\nTest Accuracy: {accuracy * 100:.2f}%")
+    print(np.mean(y))
+    print(torch.sigmoid(model.w).detach().numpy())
 
