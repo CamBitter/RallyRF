@@ -21,7 +21,7 @@ FEATURE_COLS = [
     "rank_diff"
 ]
 
-df = pd.read_csv("data/cleaned/atp_match_features_2*.csv")
+df = pd.read_csv("data/cleaned/atp_match_features_2.csv")
 
 # Split by date to avoid leakage — train on pre-2022, test on 2022+
 train_df = df[df["tourney_date"] < 20220101]
