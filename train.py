@@ -2,6 +2,7 @@ import sys
 import time
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from random_forest import RandomForestClassifier
 from sklearn.ensemble import RandomForestClassifier as SklearnRF
 
@@ -27,7 +28,7 @@ train_df = df[df["tourney_date"] < 20220101]
 test_df  = df[df["tourney_date"] >= 20220101]
 
 if not use_sklearn:
-    train_df = train_df.sample(n=2000, random_state=99)
+   train_df = train_df.sample(n=2000, random_state=99)
 
 X_train = train_df[FEATURE_COLS].to_numpy()
 Y_train = train_df["p1_won"].to_numpy()
@@ -52,7 +53,7 @@ if use_sklearn:
 else:
     print("\nUsing custom RandomForestClassifier...")
     forest = RandomForestClassifier(
-        num_trees=10,
+        num_trees=100,
         num_features=6,
         max_depth=10,
         random_state=99,
@@ -66,13 +67,39 @@ forest.fit(X_train, Y_train_fit)
 print(f"Fit done in {time.time() - t0:.3f}s")
 
 t1 = time.time()
-Y_pred = forest.predict(X_test)
+Y_pred, Y_confidence = forest.predict(X_test)
 print(f"Inference done in {time.time() - t1:.3f}s")
 
 accuracy = (Y_pred == Y_test).sum() / len(Y_test)
 print(f"Test accuracy: {accuracy:.4f}")
+print("Min confidence:", Y_confidence.min())
+print("Max confidence:", Y_confidence.max())
+print("Mean confidence:", Y_confidence.mean())
 
 # Base rate: predict p1 wins if they have a lower (better) rank number
 rank_baseline = (test_df["rank_diff"] < 0).astype(int).to_numpy()
 baseline_accuracy = (rank_baseline == Y_test).sum() / len(Y_test)
 print(f"Rank baseline: {baseline_accuracy:.4f}")
+
+conf_mat = np.zeros((2, 2), dtype=int)
+for true, pred in zip(Y_test, Y_pred):
+    conf_mat[int(true), int(pred)] += 1
+
+fig, ax = plt.subplots()
+im = ax.imshow(conf_mat, cmap="Blues", origin="upper")
+
+ax.set_xticks([0, 1])
+ax.set_yticks([0, 1])
+ax.set_xticklabels(["0", "1"])
+ax.set_yticklabels(["0", "1"])
+ax.set_xlabel("Predicted Label")
+ax.set_ylabel("True Label")
+
+for i in range(conf_mat.shape[0]):
+    for j in range(conf_mat.shape[1]):
+        ax.text(j, i, conf_mat[i, j].item(), ha="center", va="center", color="black", size=6)
+
+ax.set_title("Confusion Matrix")
+ax.grid(False)
+plt.tight_layout()
+plt.show()
