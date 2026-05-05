@@ -148,7 +148,7 @@ class DecisionTree:
             if weighted_gini[pos] < best_weighted_gini:
                 best_weighted_gini = weighted_gini[pos]
                 best_split["feature"] = feature
-                best_split["threshold"] = (x_sorted[pos] + x_sorted[pos + 1]) / 2
+                best_split["threshold"] = x_sorted[pos]
                 best_split["info_gain"] = parent_gini - best_weighted_gini
 
         # Split dataset if a best split found
@@ -162,15 +162,9 @@ class DecisionTree:
     def split(self, dataset, feature, value):
         """Splits the dataset at a given feature by a value"""
 
-        # Optimization: 0.5 seconds
-        # https://stackoverflow.com/a/19004390/14160036
         condition = dataset[:, feature] <= value
         left = dataset[condition]
         right = dataset[~condition]
-
-        # Pre-optimization: 9.17 seconds
-        # left = np.array([row for row in dataset if row[feature] <= value])
-        # right = np.array([row for row in dataset if row[feature] > value])
 
         return left, right
 
