@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class Node:
     def __init__(
         self,
@@ -101,40 +100,71 @@ class DecisionTree:
             self.print_tree(tree.right, child_prefix, is_left=False)
 
     def get_best_split(self, dataset, num_features):
-        """Returns the best split feature and value given a dataset based on Gini information gain."""
+        """Returns the best split feature and threshold using a vectorized cumsum sweep over sorted feature values."""
+
+        X = dataset[:, :-1]
+        Y = dataset[:, -1]
+        n = len(Y)
+
+        # Parent gini for binary labels
+        parent_gini = self.binary_gini(Y)
 
         best_split = {"info_gain": 0}
-        max_info_gain = float("-inf")
-        X = dataset[:, :-1]
+        best_weighted_gini = np.inf
 
         for feature in range(num_features):
-            feature_values = np.unique(X[:, feature])
 
-            for threshold in feature_values:
-                left, right = self.split(dataset, feature, threshold)
+            # Create sorted ordering by ascending feature values
+            order = np.argsort(X[:, feature])
 
-                if len(left) > 0 and len(right) > 0:
-                    y = dataset[:, -1]
-                    left_y = left[:, -1]
-                    right_y = right[:, -1]
+            # Use numpy indexing to compute sorted x and y arrays for the current feature
+            x_sorted = X[order, feature]
+            y_sorted = Y[order]
 
-                    info_gain = self.information_gain(y, left_y, right_y)
+            # cum_ones[i] = count of class 1 in positions 0...i
+            cumulative_ones = np.cumsum(y_sorted)
+            total_ones = cumulative_ones[-1]
 
-                    if info_gain > max_info_gain:
-                        max_info_gain = info_gain
-                        best_split["feature"] = feature
-                        best_split["threshold"] = threshold
-                        best_split["left_dataset"] = left
-                        best_split["right_dataset"] = right
-                        best_split["info_gain"] = info_gain
+            # For split between positions i and i+1: left = 0..i, right = i+1..n-1
+            n_left  = np.arange(1, n)
+            n_right = n - n_left
+
+            # Remove last item since you can't split after the last position
+            ones_left_of_split  = cumulative_ones[:-1]
+
+            # One right of split is just total ones minus ones left of split
+            ones_right_of_split = total_ones - ones_left_of_split
+
+            # Compute  Gini for all split positions at once — each index i represents splitting after
+            # sorted position i, with ones_left_of_split/ones_right_of_split giving class counts on each side
+            weighted_gini = self.binary_gini_vectorized(ones_left_of_split, ones_right_of_split, n_left, n_right, n)
+
+            # Remove splits with identical adjacent features so that we don't split duplicate values apart
+            valid = x_sorted[:-1] != x_sorted[1:]
+            weighted_gini = np.where(valid, weighted_gini, np.inf)
+
+            # Find split position that minimizes weighted gini
+            pos = np.argmin(weighted_gini)
+            if weighted_gini[pos] < best_weighted_gini:
+                best_weighted_gini = weighted_gini[pos]
+                best_split["feature"] = feature
+                best_split["threshold"] = x_sorted[pos]
+                best_split["info_gain"] = parent_gini - best_weighted_gini
+
+        # Split dataset if a best split found
+        if best_split["info_gain"] > 0:
+            left, right = self.split(dataset, best_split["feature"], best_split["threshold"])
+            best_split["left_dataset"] = left
+            best_split["right_dataset"] = right
 
         return best_split
 
     def split(self, dataset, feature, value):
         """Splits the dataset at a given feature by a value"""
-        
-        left = np.array([row for row in dataset if row[feature] <= value])
-        right = np.array([row for row in dataset if row[feature] > value])
+
+        condition = dataset[:, feature] <= value
+        left = dataset[condition]
+        right = dataset[~condition]
 
         return left, right
 
@@ -157,6 +187,29 @@ class DecisionTree:
 
         gini = 1 - sum
         return gini
+    
+    def binary_gini(self, y):
+        """
+            Calculates Gini Impurity of an array of binary class labels. Optimized for binary classification
+            Increases gini processing time by over 700%
+        """
+
+        prob_1 = y.sum() / len(y) 
+        prob_0 = 1 - prob_1
+        gini = 1 - (prob_0**2 + prob_1**2)
+    
+        return gini
+    
+    def binary_gini_vectorized(self, ones_left, ones_right, n_left, n_right, n):
+        """Computes weighted Gini for all split positions at once given precomputed left/right class counts."""
+
+        p_left  = ones_left  / n_left
+        p_right = ones_right / n_right
+
+        gini_left  = 2 * p_left  * (1 - p_left)
+        gini_right = 2 * p_right * (1 - p_right)
+
+        return (n_left * gini_left + n_right * gini_right) / n
 
     def information_gain(self, parent, left, right):
         """Calculates weighted information gain by splitting parent into left and right"""
@@ -166,8 +219,8 @@ class DecisionTree:
         weight_right = len(right) / len(parent)
 
         # Calculate weighted information gain by gini impurity
-        info_gain = self.gini(parent) - (
-            (weight_left * self.gini(left)) + (weight_right * self.gini(right))
+        info_gain = self.binary_gini(parent) - (
+            (weight_left * self.binary_gini(left)) + (weight_right * self.binary_gini(right))
         )
 
         return info_gain
