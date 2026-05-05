@@ -13,31 +13,25 @@ from data import getDF, getPlayerStatLastYrAvg
 
 # read in data:
 
-# this is a truncated version since using the whole data was taking forever
-def build_features(df):
-    rows = []
-    labels = []
+# updated to use new CSV
+def load_features(csv_path: str):
+    df = pd.read_csv(csv_path)
 
-    for _, match in df.iterrows():
-        features = {
-            "rank_diff":     (match["winner_rank"]        or 0) - (match["loser_rank"]        or 0),
-            "rank_pts_diff": (match["winner_rank_points"] or 0) - (match["loser_rank_points"] or 0),
-            "age_diff":      (match["winner_age"]         or 0) - (match["loser_age"]         or 0),
-        }
+    # one-hot encode match_type
+    df = pd.get_dummies(df, columns=["match_type"], prefix="match_type")
 
-        for col in ["match_type_main", "match_type_futures", "match_type_challenger"]:
-            features[col] = match.get(col, 0)
+    feature_cols = [
+        "rank_diff", "rank_pts_diff", "age_diff", "ht_diff",
+        "surface_per_diff", "ace_vs_df_diff",
+        "first_in_diff", "first_won_diff", "second_won_diff",
+        "bp_saved_pct_diff",
+    ]
+    feature_cols += [c for c in df.columns if c.startswith("match_type_")]
 
-        rows.append(features)
-        labels.append(1)
+    feature_cols = [c for c in feature_cols if c in df.columns]
 
-    X_df = pd.DataFrame(rows).fillna(0)
-    y    = np.array(labels, dtype=np.float32)
-
-    flip = np.random.rand(len(y)) > 0.5
-    diff_cols = ["rank_diff", "rank_pts_diff", "age_diff"]
-    X_df.loc[flip, diff_cols] *= -1
-    y[flip] = 0
+    X_df = df[feature_cols].fillna(0)
+    y    = df["label"].values.astype(np.float32)
 
     return X_df, y
 
@@ -93,7 +87,9 @@ if __name__ == "__main__":
     df = getDF()
     print("data wrangled!")
 
-    X_df, y = build_features(df)
+    CSV_PATH = "match_features.csv"
+
+    X_df, y = load_features(CSV_PATH)
 
     print("dataset built")
 
@@ -113,15 +109,15 @@ if __name__ == "__main__":
     d_features = X_train_tensor.shape[1]
     model      = BinaryLogisticRegression(d_features)
     model.w    = model.w.to(device)
-    opt        = GradientDescentOptimizer(model, lr=0.01)
+    opt        = GradientDescentOptimizer(model, lr=0.0001)
 
     # training loop
-    batch_size = 64
+    batch_size = 128
     n_samples  = X_train_tensor.shape[0]
     losses     = []
 
     # proof of concept run with very few epochs
-    for epoch in range(50):
+    for epoch in range(2000):
         perm            = torch.randperm(n_samples, device=device)
         X_train_tensor  = X_train_tensor[perm]
         y_train_tensor = y_train_tensor[perm]
@@ -141,8 +137,8 @@ if __name__ == "__main__":
         avg_loss = epoch_loss / num_batches
         losses.append(avg_loss)
 
-        if (epoch + 1) % 10 == 0:
-            print(f"Epoch {epoch + 1}/27500, Loss: {avg_loss:.4f}")
+        if (epoch + 1) % 100 == 0:
+            print(f"Epoch {epoch + 1}/2000, Loss: {avg_loss:.4f}")
 
     # evaluate on test set
     # currently bad, could be improved for much longer run
@@ -154,5 +150,16 @@ if __name__ == "__main__":
         test_preds = (test_probs >= 0.5).float()
         accuracy   = (test_preds == y_test_tensor).float().mean().item()
 
+
+    rank_diff_col = X_df.columns.get_loc("rank_diff")
+    X_test_np     = X_test_scaled 
+
+    seed_preds = (X_test_np[:, rank_diff_col] < 0).astype(np.float32)
+
+    seed_preds[X_test_np[:, rank_diff_col] == 0] = 1.0
+
+    seed_accuracy = (seed_preds == y_test).mean()
+
     print(f"\nTest Accuracy: {accuracy * 100:.2f}%")
+    print(f"seed baseline: {seed_accuracy * 100:.2f}%")
 

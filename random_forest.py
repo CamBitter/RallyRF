@@ -1,6 +1,5 @@
 from decision_tree import DecisionTree
-import numpy as np 
-import pandas as pd
+import numpy as np
 
 class RandomForestClassifier:
     def __init__(self, num_trees, num_features, max_depth, random_state, verbose=False):
@@ -45,11 +44,13 @@ class RandomForestClassifier:
         preds_per_tree = np.array([
             tree.forward(X[:, features])
             for tree, features in zip(self.trees, self.tree_features)
-        ]).astype(int)
+        ], dtype=int)
         preds_per_sample = preds_per_tree.T
 
         y_pred = [np.argmax(np.bincount(votes)) for votes in preds_per_sample]
-        return np.array(y_pred)
+        y_confidence = [np.max(np.bincount(votes)) / len(votes) for votes in preds_per_sample]
+
+        return np.array(y_pred), np.array(y_confidence)
 
 
 
@@ -89,8 +90,12 @@ if __name__ == "__main__":
     )
     forest.fit(X_train, Y_train)
 
-    Y_pred = forest.predict(X_val)
+    Y_pred, Y_confidence = forest.predict(X_val)
     accuracy = 0
+
+    print("Min confidence:", Y_confidence.min())
+    print("Max confidence:", Y_confidence.max())
+    print("Mean confidence:", Y_confidence.mean())
 
     for i in range(len(Y_pred)):
         if Y_pred[i] == Y_val[i]:
