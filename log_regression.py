@@ -150,5 +150,16 @@ if __name__ == "__main__":
         test_preds = (test_probs >= 0.5).float()
         accuracy   = (test_preds == y_test_tensor).float().mean().item()
 
+
+    rank_diff_col = X_df.columns.get_loc("rank_diff")
+    X_test_np     = X_test_scaled 
+
+    seed_preds = (X_test_np[:, rank_diff_col] < 0).astype(np.float32)
+
+    seed_preds[X_test_np[:, rank_diff_col] == 0] = 1.0
+
+    seed_accuracy = (seed_preds == y_test).mean()
+
     print(f"\nTest Accuracy: {accuracy * 100:.2f}%")
+    print(f"seed baseline: {seed_accuracy * 100:.2f}%")
 
