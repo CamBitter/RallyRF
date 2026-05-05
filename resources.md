@@ -11,3 +11,5 @@ https://en.wikipedia.org/wiki/Decision_tree_learning#Implementations
 https://en.wikipedia.org/wiki/Information_gain_(decision_tree)
 
 https://arxiv.org/pdf/1910.03203
+
+https://cs229.stanford.edu/proj2019aut/data/assignment_308832_raw/26647696.pdf
