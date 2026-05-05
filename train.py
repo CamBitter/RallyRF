@@ -67,7 +67,13 @@ forest.fit(X_train, Y_train_fit)
 print(f"Fit done in {time.time() - t0:.3f}s")
 
 t1 = time.time()
-Y_pred, Y_confidence = forest.predict(X_test)
+
+if use_sklearn:
+    Y_pred = forest.predict(X_test)
+    Y_confidence = np.max(forest.predict_proba(X_test), axis=1)
+else:
+    Y_pred, Y_confidence = forest.predict(X_test)
+
 print(f"Inference done in {time.time() - t1:.3f}s")
 
 accuracy = (Y_pred == Y_test).sum() / len(Y_test)
