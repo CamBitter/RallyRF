@@ -1,28 +1,7 @@
 from decision_tree import DecisionTree
 import numpy as np
 import pandas as pd
-
-def build_features(df):
-    feature_cols = [
-        "rank_diff",
-        "rank_pts_diff",
-        "age_diff",
-        "height_diff",
-        "surface_win_pct_diff",
-        "ace_vs_df_diff",
-        "first_in_diff",
-        "first_won_diff",
-        "second_won_diff",
-        "bp_saved_pct_diff",
-        "bp_converted_pct_diff",
-        "win_pct_diff",
-        "games_played_diff"
-    ]
-
-    X_df = df[feature_cols].fillna(0)
-    y = df["p1_won"].astype(float).values
-
-    return X_df, y
+from features import FEATURE_SETS
 
 class BoostedTreeClassifier:
     def __init__(self, num_trees, learning_rate, max_depth, random_state, verbose=False):
@@ -42,7 +21,7 @@ class BoostedTreeClassifier:
         self.tree_weights = []
 
         # Initialize residuals to the original labels
-        residuals = Y.copy().flatten()
+        residuals = Y.copy().flatten().astype(float)
 
         for i in range(self.num_trees):
             if self.verbose:
@@ -77,16 +56,22 @@ if __name__ == "__main__":
     from sklearn.model_selection import train_test_split
     import pandas as pd
 
-    df = pd.read_csv("data/cleaned/atp_match_features_2.csv")
+    feature_set = "some_diffs.csv"
+    FEATURE_COLS = FEATURE_SETS[feature_set]
+    df = pd.read_csv(f"data/cleaned/{feature_set}")
 
-    X, Y = build_features(df)
+    # Split by date to avoid leakage — train on pre-2022, test on 2022+
+    train_df = df[df["tourney_date"] < 20220101]
+    test_df  = df[df["tourney_date"] >= 20220101]
+
+    X_train = train_df[FEATURE_COLS].to_numpy()
+    Y_train = train_df["p1_won"].to_numpy()
+
+    X_test  = test_df[FEATURE_COLS].to_numpy()
+    Y_test  = test_df["p1_won"].to_numpy()
+
     print("Features and labels built.")
-    Y = Y.astype(float).reshape(-1, 1)
 
-    X_train, X_val, Y_train, Y_val = train_test_split(
-        X, Y, test_size=0.5, random_state=99
-    )
-    print("Data split")
     boost = BoostedTreeClassifier(
         num_trees=10,
         learning_rate=0.1,
@@ -94,19 +79,14 @@ if __name__ == "__main__":
         random_state=99
     )
     print("about to fit the model!")
-    print(X_train.dtypes)
-    print(Y_train.dtype)
-    print(X_train[:2])
-    X_train = X_train.values.astype(float)
-    X_val = X_val.values.astype(float)
     boost.fit(X_train, Y_train)
     print("Model fitted.")
 
-    Y_pred = boost.predict(X_val)
+    Y_pred = boost.predict(X_test)
     accuracy = 0
 
     for i in range(len(Y_pred)):
-        if Y_pred[i] == Y_val[i]:
+        if Y_pred[i] == Y_test[i]:
             accuracy += 1
 
     accuracy = accuracy / len(Y_pred)
