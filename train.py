@@ -19,28 +19,18 @@ df = pd.read_csv(f"data/cleaned/{feature_set}")
 ***RESULTS***
 
 all_diffs.csv:
-
 Train accuracy: 86.31%
 Test accuracy:  63.48%
-Gap:            22.83%
-Min confidence: 0.5
-Max confidence: 0.96
 Mean confidence: 69.7%
 
 no_diffs.csv:
 Train accuracy: 96.35%
 Test accuracy:  62.87%
-Gap:            33.48%
-Min confidence: 0.5
-Max confidence: 0.92
 Mean confidence: 62.00%
 
 some_diffs.csv:
 Train accuracy: 91.79%
 Test accuracy:  63.13%
-Gap:            28.66%
-Min confidence: 0.5
-Max confidence: 0.96
 Mean confidence: 66.24%
 
 """
