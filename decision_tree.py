@@ -42,7 +42,7 @@ class DecisionTree:
 
         x_feature = x[node.feature]
 
-        if x_feature <= node.threshold:
+        if x_feature <= float(node.threshold):
             return self.predict_item(node.left, x)
         else:
             return self.predict_item(node.right, x)

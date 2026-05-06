@@ -1,6 +1,7 @@
 from decision_tree import DecisionTree
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def build_features(df):
     feature_cols = [
@@ -59,18 +60,34 @@ class BoostedTreeClassifier:
 
             self.trees.append(tree)
             self.tree_weights.append(self.learning_rate)
+            
     def predict(self, X):
         """Predict class labels for the input data"""
 
         # Initialize predictions to zero
         final_predictions = np.zeros(X.shape[0])
+        predictions = []
 
         # Sum predictions from all trees, weighted by their learning rate
         for tree, weight in zip(self.trees, self.tree_weights):
-            final_predictions += weight * np.array(tree.forward(X), dtype=float)
-
+            tree_predictions = weight * np.array(tree.forward(X), dtype=float)
+            final_predictions += tree_predictions
+            predictions.append(tree_predictions)
         # Convert final predictions to binary class labels (0 or 1)
-        return (final_predictions > 0.5).astype(int)
+
+        probs = 1 / (1 + np.exp(-final_predictions))
+        confidence = np.abs(probs - 0.5) * 2
+        return (probs > 0.5).astype(int), confidence, predictions
+    #Gets the summed confidence of the first n trees, going by 10, to show how confidence changes as more trees are added. 
+    def getConfidences(self, tree_preds):
+        for n in range(0, len(tree_preds)+1, 10):
+            cumulative = sum(tree_preds[1:n+1])
+            probs_n = 1 / (1 + np.exp(-cumulative))
+            conf_n = np.abs(probs_n - 0.5) * 2
+            print(f"Trees: {n}, Avg confidence: {conf_n.mean():.4f}")
+
+    
+
 
 if __name__ == "__main__":
 
@@ -88,10 +105,10 @@ if __name__ == "__main__":
     )
     print("Data split")
     boost = BoostedTreeClassifier(
-        num_trees=10,
-        learning_rate=0.1,
-        max_depth=10,
-        random_state=99
+        num_trees=100,
+        learning_rate=0.25,
+        max_depth=5,
+        random_state=41
     )
     print("about to fit the model!")
     print(X_train.dtypes)
@@ -102,15 +119,71 @@ if __name__ == "__main__":
     boost.fit(X_train, Y_train)
     print("Model fitted.")
 
-    Y_pred = boost.predict(X_val)
+    Y_pred, Y_confidence, tree_preds = boost.predict(X_val)
     accuracy = 0
 
-    for i in range(len(Y_pred)):
+    for i in range(Y_pred.shape[0]):
         if Y_pred[i] == Y_val[i]:
             accuracy += 1
 
     accuracy = accuracy / len(Y_pred)
+    print("Min confidence:", Y_confidence.min())
+    print("Max confidence:", Y_confidence.max())
+    print("Mean confidence:", Y_confidence.mean())
     print(accuracy)
 
+    print(pd.DataFrame(tree_preds).head())
+    boost.getConfidences(tree_preds)
 
-    
+    conf_mat = np.zeros((2, 2), dtype=int)
+    for true, pred in zip(Y_val.flatten(), Y_pred.flatten()):
+        conf_mat[int(true), int(pred)] += 1
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(conf_mat, cmap="Blues", origin="upper")
+
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(["0", "1"])
+    ax.set_yticklabels(["0", "1"])
+    ax.set_xlabel("Predicted Label")
+    ax.set_ylabel("True Label")
+
+    for i in range(conf_mat.shape[0]):
+        for j in range(conf_mat.shape[1]):
+            ax.text(j, i, conf_mat[i, j].item(), ha="center", va="center", color="black", size=6)
+
+    ax.set_title("Confusion Matrix")
+    ax.grid(False)
+    plt.tight_layout()
+    plt.show()
+
+    steps = list(range(0, len(tree_preds) + 1, 10))
+    fig, axes = plt.subplots(1, len(steps), figsize=(4 * len(steps), 4))
+
+    for ax, n in zip(axes, steps):
+        cumulative = sum(tree_preds[:n])
+        probs_n = 1 / (1 + np.exp(-cumulative))
+        Y_pred_n = (probs_n > 0.5).astype(int)
+
+        conf_mat = np.zeros((2, 2), dtype=int)
+        for true, pred in zip(Y_val.flatten(), Y_pred_n.flatten()):
+            conf_mat[int(true), int(pred)] += 1
+
+        im = ax.imshow(conf_mat, cmap="Blues", origin="upper")
+        ax.set_xticks([0, 1])
+        ax.set_yticks([0, 1])
+        ax.set_xticklabels(["0", "1"])
+        ax.set_yticklabels(["0", "1"])
+        ax.set_xlabel("Predicted Label")
+        ax.set_ylabel("True Label")
+
+        for i in range(conf_mat.shape[0]):
+            for j in range(conf_mat.shape[1]):
+                ax.text(j, i, conf_mat[i, j].item(), ha="center", va="center", color="black", size=6)
+
+        ax.set_title(f"Tree: {n}")
+        ax.grid(False)
+
+    plt.tight_layout()
+    plt.show()
