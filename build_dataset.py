@@ -16,7 +16,7 @@ import time
 # bpFaced    : break points faced (as server)
 # opp_bpf    : break points the opponent faced (= break point opportunities for this player as returner)
 # opp_bps    : break points the opponent saved (as server)
-#
+
 # Derived features (all computed over rolling 6-month window):
 # ace_vs_df        : aces / double faults
 # first_in         : 1stIn / svpt  (first serve percentage)
@@ -29,14 +29,21 @@ import time
 # games_played     : total matches played in the window (activity/injury proxy)
 
 
-def getDF():
+def loadCSVs():
+    """Combine all match CSVs into a single DataFrame, sorted by date, drop walkovers and retirements"""
+    
+    # Glob CSVs together
     folder_path = "data/tennis_atp/matches/"
     csv_files = glob.glob(os.path.join(folder_path, "atp_matches_2*.csv"))
 
     df = pd.concat((pd.read_csv(f) for f in csv_files), ignore_index=True)
-    df["match_type"] = "main"
     df = df.sort_values("tourney_date").reset_index(drop=True)
-    return df
+    score = df["score"].str.lower().str.strip()
+
+    # Drop walkovers and retirements
+    df = df[~score.str.contains("W/O|RET")].reset_index(drop=True)
+
+    return df.reset_index(drop=True)
 
 
 def one_year_ago(date_int):
@@ -51,16 +58,19 @@ def nan_diff(a, b):
 
 
 def build_player_index(df):
-    # Pre-group each player's matches into a sorted list so rolling_stats can
-    # slice a small per-player list instead of scanning the full dataframe
+    """Precalculate player indexed list of matches to speed up rolling stat calculation"""
+
+    records = df.to_dict("records")
     index = {}
-    for _, match in df.iterrows():
+    for match in records:
         index.setdefault(match["winner_name"], []).append(match)
         index.setdefault(match["loser_name"],  []).append(match)
-    return index  # already date-sorted since df is sorted by tourney_date
+    return index
 
 
 def rolling_stats(player_index, player_name, surface, before_date):
+    """Calculates rolling stats for a player up to a given date, optionally filtered by surface"""
+
     cutoff = one_year_ago(before_date)
     all_matches = player_index.get(player_name, [])
     window = [m for m in all_matches if cutoff <= m["tourney_date"] < before_date]
@@ -71,19 +81,16 @@ def rolling_stats(player_index, player_name, surface, before_date):
             "bp_saved_pct", "bp_converted_pct", "win_pct", "surface_win_pct", "games_played",
         ]}
 
-    player_df = pd.DataFrame(window)
+    # Collect wins and losses seperately 
+    w = [m for m in window if m["winner_name"] == player_name]
+    l = [m for m in window if m["loser_name"]  == player_name]
 
-    if player_df.empty:
-        return {s: np.nan for s in [
-            "ace_vs_df", "first_in", "first_won", "second_won",
-            "bp_saved_pct", "bp_converted_pct", "win_pct", "surface_win_pct", "games_played",
-        ]}
-
-    w = player_df[player_df["winner_name"] == player_name]
-    l = player_df[player_df["loser_name"]  == player_name]
+    def stat(matches, col):
+        arr = np.array([m[col] for m in matches], dtype=float)
+        return arr[~np.isnan(arr)]
 
     def concat_stat(wcol, lcol):
-        return pd.concat([w[wcol].dropna(), l[lcol].dropna()])
+        return np.concatenate([stat(w, wcol), stat(l, lcol)])
 
     ace  = concat_stat("w_ace",     "l_ace")
     df_  = concat_stat("w_df",      "l_df")
@@ -93,13 +100,14 @@ def rolling_stats(player_index, player_name, surface, before_date):
     swon = concat_stat("w_2ndWon",  "l_2ndWon")
     bps  = concat_stat("w_bpSaved", "l_bpSaved")
     bpf  = concat_stat("w_bpFaced", "l_bpFaced")
-    opp_bpf = pd.concat([w["l_bpFaced"].dropna(), l["w_bpFaced"].dropna()])
-    opp_bps = pd.concat([w["l_bpSaved"].dropna(), l["w_bpSaved"].dropna()])
+    opp_bpf = np.concatenate([stat(w, "l_bpFaced"), stat(l, "w_bpFaced")])
+    opp_bps = np.concatenate([stat(w, "l_bpSaved"), stat(l, "w_bpSaved")])
 
     s_attempts = svpt.sum() - fin.sum()
 
-    surface_df = player_df[player_df["surface"] == surface] if surface else pd.DataFrame()
-    surface_win_pct = (surface_df["winner_name"] == player_name).sum() / len(surface_df) if len(surface_df) > 0 else np.nan
+    surface_matches = [m for m in window if m.get("surface") == surface] if surface else []
+    n_surface = len(surface_matches)
+    surface_win_pct = sum(1 for m in surface_matches if m["winner_name"] == player_name) / n_surface if n_surface > 0 else np.nan
 
     return {
         "ace_vs_df":         (ace.sum()  / df_.sum())   if df_.sum()  > 0 else np.nan,
@@ -108,9 +116,9 @@ def rolling_stats(player_index, player_name, surface, before_date):
         "second_won":        (swon.sum() / s_attempts)  if s_attempts > 0 else np.nan,
         "bp_saved_pct":      (bps.sum()  / bpf.sum())   if bpf.sum()  > 0 else np.nan,
         "bp_converted_pct":  ((opp_bpf.sum() - opp_bps.sum()) / opp_bpf.sum()) if opp_bpf.sum() > 0 else np.nan,
-        "win_pct":           len(w) / len(player_df),
+        "win_pct":           len(w) / len(window),
         "surface_win_pct":   surface_win_pct,
-        "games_played":      len(player_df),
+        "games_played":      len(window),
     }
 
 
@@ -132,61 +140,70 @@ def build(df):
         s1 = rolling_stats(player_index, p1, surf, date)
         s2 = rolling_stats(player_index, p2, surf, date)
 
-        p1_rank = match.get("winner_rank")
-        p2_rank = match.get("loser_rank")
-        p1_rpts = match.get("winner_rank_points")
-        p2_rpts = match.get("loser_rank_points")
-        p1_age  = match.get("winner_age")
-        p2_age  = match.get("loser_age")
-        p1_ht   = match.get("winner_ht")
-        p2_ht   = match.get("loser_ht")
+        p1_rank     = match["winner_rank"]
+        p2_rank     = match["loser_rank"]
+        p1_rpts     = match["winner_rank_points"]
+        p2_rpts     = match["loser_rank_points"]
+        p1_age      = match["winner_age"]
+        p2_age      = match["loser_age"]
+        p1_height   = match["winner_ht"]
+        p2_height   = match["loser_ht"]
 
         row = {
-            "tourney_id":            match.get("tourney_id"),
-            "tourney_date":          date,
-            "surface":               surf,
-            "round":                 match.get("round"),
-            "match_type":            match.get("match_type"),
-            "p1_name":               p1,
-            "p2_name":               p2,
-            "p1_won":                1,
-            "rank_diff":             nan_diff(p1_rank, p2_rank),
-            "rank_pts_diff":         nan_diff(p1_rpts, p2_rpts),
-            "age_diff":              nan_diff(p1_age,  p2_age),
-            "height_diff":           nan_diff(p1_ht,   p2_ht),
-            "surface_win_pct_diff":  nan_diff(s1["surface_win_pct"],   s2["surface_win_pct"]),
-            "ace_vs_df_diff":        nan_diff(s1["ace_vs_df"],         s2["ace_vs_df"]),
-            "first_in_diff":         nan_diff(s1["first_in"],          s2["first_in"]),
-            "first_won_diff":        nan_diff(s1["first_won"],         s2["first_won"]),
-            "second_won_diff":       nan_diff(s1["second_won"],        s2["second_won"]),
-            "bp_saved_pct_diff":     nan_diff(s1["bp_saved_pct"],      s2["bp_saved_pct"]),
-            "bp_converted_pct_diff": nan_diff(s1["bp_converted_pct"],  s2["bp_converted_pct"]),
-            "win_pct_diff":          nan_diff(s1["win_pct"],           s2["win_pct"]),
-            "games_played_diff":     nan_diff(s1["games_played"],      s2["games_played"]),
+            "tourney_id":              match["tourney_id"],
+            "tourney_date":            date,
+            "round":                   match["round"],
+            "p1_name":                 p1,
+            "p2_name":                 p2,
+            "p1_won":                  1,
+            "surface_hard":            1 if surf == "Hard"  else 0,
+            "surface_clay":            1 if surf == "Clay"  else 0,
+            "surface_grass":           1 if surf == "Grass" else 0,
+            "p1_rank":                 p1_rank,
+            "p2_rank":                 p2_rank,
+            "p1_rank_points":          p1_rpts,
+            "p2_rank_points":          p2_rpts,
+            "p1_height":               p1_height,
+            "p2_height":               p2_height,
+            "age_diff":                nan_diff(p1_age,  p2_age),
+            "surface_win_pct_diff":    nan_diff(s1["surface_win_pct"],   s2["surface_win_pct"]),
+            "ace_vs_df_diff":          nan_diff(s1["ace_vs_df"],         s2["ace_vs_df"]),
+            "first_in_diff":           nan_diff(s1["first_in"],          s2["first_in"]),
+            "first_won_diff":          nan_diff(s1["first_won"],         s2["first_won"]),
+            "second_won_diff":         nan_diff(s1["second_won"],        s2["second_won"]),
+            "bp_saved_pct_diff":       nan_diff(s1["bp_saved_pct"],      s2["bp_saved_pct"]),
+            "bp_converted_pct_diff":   nan_diff(s1["bp_converted_pct"],  s2["bp_converted_pct"]),
+            "win_pct_diff":            nan_diff(s1["win_pct"],           s2["win_pct"]),
+            "games_played_diff":       nan_diff(s1["games_played"],      s2["games_played"]),
         }
 
         rows.append(row)
 
     result = pd.DataFrame(rows)
+
     diff_cols = [c for c in result.columns if c.endswith("_diff")]
+    p1_cols   = [c for c in result.columns if c.startswith("p1_") and c not in ("p1_name", "p1_won")]
+    p2_cols   = [c for c in result.columns if c.startswith("p2_") and c != "p2_name"]
+    feature_cols = p1_cols + p2_cols + diff_cols
 
     flipped = result.copy()
-    flipped[diff_cols] *= -1
     flipped["p1_won"] = 0
+    flipped[diff_cols] *= -1
+    flipped[p1_cols + p2_cols] = result[p2_cols + p1_cols].values
     flipped[["p1_name", "p2_name"]] = flipped[["p2_name", "p1_name"]].values
 
     combined = pd.concat([result, flipped], ignore_index=True)
-    return combined.dropna(subset=diff_cols)
+    return combined.dropna(subset=feature_cols)
 
 
 if __name__ == "__main__":
-    df = getDF()
+    df = loadCSVs()
     print(f"Loaded {len(df)} matches. Building features...")
 
     start = time.time()
     features = build(df)
     elapsed = time.time() - start
 
-    out_path = "data/cleaned/atp_match_features_2*.csv"
+    out_path = "data/cleaned/some_diffs.csv"
     features.to_csv(out_path, index=False)
     print(f"\nDone! Saved {len(features)} rows to '{out_path}' in {elapsed:.3f}s.")
