@@ -1,7 +1,7 @@
-from decision_tree import DecisionTree
+from src.decision_tree import DecisionTree
 import numpy as np
 import pandas as pd
-from features import FEATURE_SETS
+from src.features import FEATURE_SETS
 
 class BoostedTreeClassifier:
     def __init__(self, num_trees, learning_rate, max_depth, random_state, verbose=False):
