@@ -267,5 +267,3 @@ if __name__ == "__main__":
 
     accuracy = accuracy / len(Y_pred)
     print(accuracy)
-
-    # tree.print_tree()
