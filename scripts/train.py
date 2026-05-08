@@ -3,9 +3,10 @@ import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from random_forest import RandomForestClassifier
+from src.random_forest import RandomForestClassifier
 from sklearn.ensemble import RandomForestClassifier as SklearnRF
-from features import FEATURE_SETS
+from src.features import FEATURE_SETS
+from src.decision_tree import DecisionTree
 
 verbose = "--verbose" in sys.argv or "-v" in sys.argv
 use_sklearn = "--sklearn" in sys.argv
@@ -50,8 +51,8 @@ Y_test  = test_df["p1_won"].to_numpy()
 print(f"Train: {len(train_df)} rows | Test: {len(test_df)} rows")
 print(f"Features: {len(FEATURE_COLS)}")
 
-n_trees = 75
-max_depth = 12
+n_trees = 10
+max_depth = 3
 max_features = 3
 
 if use_sklearn:
@@ -88,6 +89,11 @@ if use_sklearn:
     Y_confidence = np.max(forest.predict_proba(X_test), axis=1)
 else:
     Y_pred, Y_confidence = forest.predict(X_test)
+    for t in range(6):
+        tree_feature_names = [FEATURE_COLS[i] for i in forest.tree_features[t]]
+        forest.trees[t].print_tree(feature_names=tree_feature_names)
+
+
 
 print(f"Inference done in {time.time() - t1:.3f}s")
 

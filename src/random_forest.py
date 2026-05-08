@@ -1,4 +1,4 @@
-from decision_tree import DecisionTree
+from src.decision_tree import DecisionTree
 import numpy as np
 
 class RandomForestClassifier:
@@ -23,6 +23,7 @@ class RandomForestClassifier:
         for i in range(self.num_trees):
             if self.verbose:
                 print(f"  fitting tree {i + 1}/{self.num_trees}...")
+
             # Bootstrap sampling with replacement
             row_indices = np.random.choice(len(X), size=len(X), replace=True)
             # Feature bagging: each tree gets a random subset of columns
@@ -53,14 +54,13 @@ class RandomForestClassifier:
         return np.array(y_pred), np.array(y_confidence)
 
 
-
 if __name__ == "__main__":
     # Demo random forest on penguin dataset
 
     from sklearn.model_selection import train_test_split
     import pandas as pd
 
-    url = "https://raw.githubusercontent.com/PhilChodrow/ml-notes/main/data/palmer-penguins/palmer-penguins.csv"
+    url = "data/penguins/palmer-penguins.csv"
     df = pd.read_csv(url)
 
     feature_cols = [
@@ -102,5 +102,4 @@ if __name__ == "__main__":
             accuracy += 1
 
     accuracy = accuracy / len(Y_pred)
-    print(accuracy)
-
+    print("Accuracy:", accuracy)
