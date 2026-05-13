@@ -2,6 +2,7 @@ from decision_tree import DecisionTree
 import numpy as np
 import pandas as pd
 from features import FEATURE_SETS
+from matplotlib import pyplot as plt
 
 class BoostedTreeClassifier:
     def __init__(self, num_trees, learning_rate, max_depth, random_state, verbose=False):
@@ -98,24 +99,24 @@ if __name__ == "__main__":
     boost.fit(X_train, Y_train)
     print("Model fitted.")
 
-    Y_pred, Y_confidence, tree_preds = boost.predict(X_val)
+    Y_pred, Y_confidence, tree_preds = boost.predict(X_test)
     accuracy = 0
 
     for i in range(Y_pred.shape[0]):
-        if Y_pred[i] == Y_val[i]:
+        if Y_pred[i] == Y_test[i]:
             accuracy += 1
 
     accuracy = accuracy / len(Y_pred)
+    print("Accuracy:", accuracy)
     print("Min confidence:", Y_confidence.min())
     print("Max confidence:", Y_confidence.max())
     print("Mean confidence:", Y_confidence.mean())
-    print(accuracy)
 
     print(pd.DataFrame(tree_preds).head())
     boost.getConfidences(tree_preds)
 
     conf_mat = np.zeros((2, 2), dtype=int)
-    for true, pred in zip(Y_val.flatten(), Y_pred.flatten()):
+    for true, pred in zip(Y_test.flatten(), Y_pred.flatten()):
         conf_mat[int(true), int(pred)] += 1
 
     fig, ax = plt.subplots()
@@ -146,7 +147,7 @@ if __name__ == "__main__":
         Y_pred_n = (probs_n > 0.5).astype(int)
 
         conf_mat = np.zeros((2, 2), dtype=int)
-        for true, pred in zip(Y_val.flatten(), Y_pred_n.flatten()):
+        for true, pred in zip(Y_test.flatten(), Y_pred_n.flatten()):
             conf_mat[int(true), int(pred)] += 1
 
         im = ax.imshow(conf_mat, cmap="Blues", origin="upper")
