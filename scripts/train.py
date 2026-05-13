@@ -3,15 +3,16 @@ import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from random_forest import RandomForestClassifier
+from src.random_forest import RandomForestClassifier
 from sklearn.ensemble import RandomForestClassifier as SklearnRF
-from features import FEATURE_SETS
+from src.features import FEATURE_SETS
+from src.decision_tree import DecisionTree
 
 verbose = "--verbose" in sys.argv or "-v" in sys.argv
 use_sklearn = "--sklearn" in sys.argv
 
 # Input feature set from data/cleaned/*.csv, defined in features.py
-feature_set = "some_diffs.csv"
+feature_set = "all_diffs.csv"
 FEATURE_COLS = FEATURE_SETS[feature_set]
 df = pd.read_csv(f"data/cleaned/{feature_set}")
 
@@ -36,8 +37,10 @@ Mean confidence: 66.24%
 """
 
 # Split by date to avoid leakage — train on pre-2022, test on 2022+
-train_df = df[df["tourney_date"] < 20220101]
-test_df  = df[df["tourney_date"] >= 20220101]
+date_split = 20220101
+
+train_df = df[df["tourney_date"] < date_split]
+test_df  = df[df["tourney_date"] >= date_split]
 
 X_train = train_df[FEATURE_COLS].to_numpy()
 Y_train = train_df["p1_won"].to_numpy()
@@ -48,9 +51,9 @@ Y_test  = test_df["p1_won"].to_numpy()
 print(f"Train: {len(train_df)} rows | Test: {len(test_df)} rows")
 print(f"Features: {len(FEATURE_COLS)}")
 
-n_trees = 100
-max_depth = 20
-max_features = 4
+n_trees = 10
+max_depth = 3
+max_features = 3
 
 if use_sklearn:
     print("\nUsing sklearn RandomForestClassifier...")
@@ -86,6 +89,11 @@ if use_sklearn:
     Y_confidence = np.max(forest.predict_proba(X_test), axis=1)
 else:
     Y_pred, Y_confidence = forest.predict(X_test)
+    for t in range(6):
+        tree_feature_names = [FEATURE_COLS[i] for i in forest.tree_features[t]]
+        forest.trees[t].print_tree(feature_names=tree_feature_names)
+
+
 
 print(f"Inference done in {time.time() - t1:.3f}s")
 

@@ -4,7 +4,7 @@
 import torch
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from features import FEATURE_SETS
+from src.features import FEATURE_SETS
 
 feature_set = "all_diffs.csv"
 FEATURE_COLS = FEATURE_SETS[feature_set]
