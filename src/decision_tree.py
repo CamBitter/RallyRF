@@ -81,8 +81,8 @@ class DecisionTree:
         leaf_value = self.calculate_leaf_value(Y)
         return Node(value=leaf_value)
 
-    def print_tree(self, tree=None, prefix="", is_left=True):
-        """Print out a fitted decision tree"""
+    def print_tree(self, tree=None, prefix="", is_left=True, feature_names=None):
+        """Print out a fitted decision tree. Pass feature_names as a pre-resolved list aligned to local feature indices."""
         if tree is None:
             tree = self.root
 
@@ -90,14 +90,15 @@ class DecisionTree:
             print(prefix + "└── " + f"[{tree.value}]")
         else:
             connector = "├── " if is_left else "└── "
+            fname = feature_names[tree.feature] if feature_names is not None else f"X{tree.feature}"
             print(
                 prefix
                 + connector
-                + f"X{tree.feature} <= {float(tree.threshold):.3f}  (gain: {float(tree.info_gain):.4f})"
+                + f"{fname} <= {float(tree.threshold):.3f}  (gain: {float(tree.info_gain):.4f})"
             )
             child_prefix = prefix + ("│   " if is_left else "    ")
-            self.print_tree(tree.left, child_prefix, is_left=True)
-            self.print_tree(tree.right, child_prefix, is_left=False)
+            self.print_tree(tree.left, child_prefix, is_left=True, feature_names=feature_names)
+            self.print_tree(tree.right, child_prefix, is_left=False, feature_names=feature_names)
 
     def get_best_split(self, dataset, num_features):
         """Returns the best split feature and threshold using a vectorized cumsum sweep over sorted feature values."""
@@ -266,5 +267,3 @@ if __name__ == "__main__":
 
     accuracy = accuracy / len(Y_pred)
     print(accuracy)
-
-    # tree.print_tree()
