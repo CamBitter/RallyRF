@@ -13,6 +13,7 @@ class BoostedTreeClassifier:
         self.max_depth = max_depth
         self.random_state = random_state
         self.verbose = verbose
+        self.base_prediction = None
 
     def fit(self, X, Y):
         """Fit the boosted tree classifier to the training data"""
@@ -22,12 +23,12 @@ class BoostedTreeClassifier:
         self.tree_weights = []
 
         # Initialize residuals to the original labels
-        residuals = Y.copy().flatten().astype(float)
+        self.base_prediction = Y.copy().flatten().astype(float).mean()
+        residuals = Y.copy().flatten().astype(float) - self.base_prediction
 
         for i in range(self.num_trees):
             if self.verbose:
                 print(f"  fitting tree {i + 1}/{self.num_trees}...")
-            print(f"  fitting tree {i + 1}/{self.num_trees}...")
             tree = DecisionTree(max_depth=self.max_depth)
             tree.fit(X, residuals.reshape(-1, 1))
 
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     from sklearn.model_selection import train_test_split
     import pandas as pd
 
-    feature_set = "some_diffs.csv"
+    feature_set = "all_diffs.csv"
     FEATURE_COLS = FEATURE_SETS[feature_set]
     df = pd.read_csv(f"data/cleaned/{feature_set}")
 
@@ -90,10 +91,11 @@ if __name__ == "__main__":
     print("Features and labels built.")
 
     boost = BoostedTreeClassifier(
-        num_trees=100,
+        num_trees=10,
         learning_rate=0.25,
         max_depth=5,
-        random_state=41
+        random_state=41,
+        verbose=True
     )
     print("about to fit the model!")
     boost.fit(X_train, Y_train)
