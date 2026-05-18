@@ -1,3 +1,4 @@
+import gzip
 import sys
 import time
 import numpy as np
@@ -7,12 +8,13 @@ from src.random_forest import RandomForestClassifier
 from sklearn.ensemble import RandomForestClassifier as SklearnRF
 from src.features import FEATURE_SETS
 from src.decision_tree import DecisionTree
+import pickle
 
 verbose = "--verbose" in sys.argv or "-v" in sys.argv
 use_sklearn = "--sklearn" in sys.argv
 
 # Input feature set from data/cleaned/*.csv, defined in features.py
-feature_set = "all_diffs.csv"
+feature_set = "some_diffs.csv"
 FEATURE_COLS = FEATURE_SETS[feature_set]
 df = pd.read_csv(f"data/cleaned/{feature_set}")
 
@@ -51,56 +53,39 @@ Y_test  = test_df["p1_won"].to_numpy()
 print(f"Train: {len(train_df)} rows | Test: {len(test_df)} rows")
 print(f"Features: {len(FEATURE_COLS)}")
 
-n_trees = 10
-max_depth = 3
+n_trees = 150
+max_depth = 20
 max_features = 3
 
-if use_sklearn:
-    print("\nUsing sklearn RandomForestClassifier...")
-    forest = SklearnRF(
-        n_estimators=n_trees,
-        max_depth=max_depth,
-        max_features="sqrt",
-        random_state=99,
-        verbose=1 if verbose else 0,
-        n_jobs=-1,
-    )
-    Y_train_fit = Y_train
-else:
-    print("\nUsing custom RandomForestClassifier...")
-    forest = RandomForestClassifier(
-        num_trees=n_trees,
-        num_features=max_features,
-        max_depth=max_depth,
-        random_state=99,
-        verbose=verbose,
-    )
-    Y_train_fit = Y_train.reshape(-1, 1)
+
+print("\nUsing custom RandomForestClassifier...")
+forest = RandomForestClassifier(
+    num_trees=n_trees,
+    num_features=max_features,
+    max_depth=max_depth,
+    random_state=99,
+    verbose=verbose,
+)
+Y_train_fit = Y_train.reshape(-1, 1)
 
 print("Fitting...")
 t0 = time.time()
 forest.fit(X_train, Y_train_fit)
 print(f"Fit done in {time.time() - t0:.3f}s")
 
+with gzip.open(f"models/forest-{feature_set[:-4]}-{n_trees}_trees-{max_depth}_depth-{max_features}_features.pkl.gz", "wb") as f:
+    pickle.dump(forest, f)
+
 t1 = time.time()
 
-if use_sklearn:
-    Y_pred = forest.predict(X_test)
-    Y_confidence = np.max(forest.predict_proba(X_test), axis=1)
-else:
-    Y_pred, Y_confidence = forest.predict(X_test)
-    for t in range(6):
-        tree_feature_names = [FEATURE_COLS[i] for i in forest.tree_features[t]]
-        forest.trees[t].print_tree(feature_names=tree_feature_names)
-
-
+Y_pred, Y_confidence = forest.predict(X_test)
+for t in range(6):
+    tree_feature_names = [FEATURE_COLS[i] for i in forest.tree_features[t]]
+    forest.trees[t].print_tree(feature_names=tree_feature_names)
 
 print(f"Inference done in {time.time() - t1:.3f}s")
 
-if use_sklearn:
-    Y_train_pred = forest.predict(X_train)
-else:
-    Y_train_pred, _ = forest.predict(X_train)
+Y_train_pred, _ = forest.predict(X_train)
 
 train_accuracy = (Y_train_pred == Y_train).sum() / len(Y_train)
 accuracy = (Y_pred == Y_test).sum() / len(Y_test)
@@ -110,33 +95,3 @@ print(f"Gap:            {train_accuracy - accuracy:.4f}")
 print("Min confidence:", Y_confidence.min())
 print("Max confidence:", Y_confidence.max())
 print("Mean confidence:", Y_confidence.mean())
-
-# Base rate: predict p1 wins if they have a lower (better) rank number
-if "rank" in FEATURE_COLS:
-    rank_baseline = (test_df["rank_diff"] < 0).astype(int).to_numpy()
-    baseline_accuracy = (rank_baseline == Y_test).sum() / len(Y_test)
-    print(f"Rank baseline: {baseline_accuracy:.4f}")
-
-conf_mat = np.zeros((2, 2), dtype=int)
-for true, pred in zip(Y_test, Y_pred):
-    conf_mat[int(true), int(pred)] += 1
-
-fig, ax = plt.subplots()
-im = ax.imshow(conf_mat, cmap="Blues", origin="upper")
-
-ax.set_xticks([0, 1])
-ax.set_yticks([0, 1])
-ax.set_xticklabels(["0", "1"])
-ax.set_yticklabels(["0", "1"])
-ax.set_xlabel("Predicted Label")
-ax.set_ylabel("True Label")
-
-for i in range(conf_mat.shape[0]):
-    for j in range(conf_mat.shape[1]):
-        ax.text(j, i, conf_mat[i, j].item(), ha="center", va="center", color="black", size=6)
-
-ax.set_title("Confusion Matrix")
-ax.grid(False)
-plt.tight_layout()
-plt.show()
-
