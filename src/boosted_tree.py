@@ -45,7 +45,7 @@ class BoostedTreeClassifier:
         """Predict class labels for the input data"""
 
         # Initialize predictions to zero
-        final_predictions = np.zeros(X.shape[0])
+        final_predictions = np.full(X.shape[0], self.base_prediction)
         predictions = []
 
         # Sum predictions from all trees, weighted by their learning rate
