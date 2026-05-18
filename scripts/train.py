@@ -1,3 +1,4 @@
+import gzip
 import sys
 import time
 import numpy as np
@@ -72,6 +73,9 @@ t0 = time.time()
 forest.fit(X_train, Y_train_fit)
 print(f"Fit done in {time.time() - t0:.3f}s")
 
+with gzip.open(f"models/forest-{feature_set[:-4]}-{n_trees}_trees-{max_depth}_depth-{max_features}_features.pkl.gz", "wb") as f:
+    pickle.dump(forest, f)
+
 t1 = time.time()
 
 Y_pred, Y_confidence = forest.predict(X_test)
@@ -91,6 +95,3 @@ print(f"Gap:            {train_accuracy - accuracy:.4f}")
 print("Min confidence:", Y_confidence.min())
 print("Max confidence:", Y_confidence.max())
 print("Mean confidence:", Y_confidence.mean())
-
-with open(f"models/forest-{feature_set[:-4]}-{n_trees}_trees-{max_depth}_depth-{max_features}_features.pkl", "wb") as f:
-    pickle.dump(forest, f)
