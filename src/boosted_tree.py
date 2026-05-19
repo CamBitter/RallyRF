@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     feature_set = "all_diffs.csv"
     FEATURE_COLS = FEATURE_SETS[feature_set]
-    
+
     df = pd.read_csv(f"data/cleaned/{feature_set}")
 
     # Split by date to avoid leakage — train on pre-2022, test on 2022+
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     boost = BoostedTreeClassifier(
         num_trees=20,
-        learning_rate=0.25,
+        learning_rate=0.01,
         max_depth=5,
         random_state=41,
         verbose=True
