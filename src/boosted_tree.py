@@ -142,35 +142,3 @@ if __name__ == "__main__":
     ax.grid(False)
     plt.tight_layout()
     plt.show()
-
-    steps = list(range(0, len(tree_preds) + 1, 10))
-    fig, axes = plt.subplots(1, len(steps), figsize=(4 * len(steps), 4))
-
-    for ax, n in zip(axes, steps):
-        cumulative = sum(tree_preds[:n])
-        probs_n = 1 / (1 + np.exp(-cumulative))
-        Y_pred_n = (probs_n > 0.5).astype(int)
-
-        conf_mat = np.zeros((2, 2), dtype=int)
-        for true, pred in zip(Y_test.flatten(), Y_pred_n.flatten()):
-            conf_mat[int(true), int(pred)] += 1
-
-        im = ax.imshow(conf_mat, cmap="Blues", origin="upper")
-        ax.set_xticks([0, 1])
-        ax.set_yticks([0, 1])
-        ax.set_xticklabels(["0", "1"])
-        ax.set_yticklabels(["0", "1"])
-        ax.set_xlabel("Predicted Label")
-        ax.set_ylabel("True Label")
-
-        for i in range(conf_mat.shape[0]):
-            for j in range(conf_mat.shape[1]):
-                ax.text(j, i, conf_mat[i, j].item(), ha="center", va="center", color="black", size=6)
-
-        ax.set_title(f"Tree: {n}")
-        ax.grid(False)
-
-    plt.tight_layout()
-    plt.show()
-    print(train_df[FEATURE_COLS].std().sort_values())
-    print(train_df[FEATURE_COLS].corrwith(train_df["p1_won"]).sort_values())
