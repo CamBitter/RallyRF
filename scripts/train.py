@@ -14,7 +14,7 @@ verbose = "--verbose" in sys.argv or "-v" in sys.argv
 use_sklearn = "--sklearn" in sys.argv
 
 # Input feature set from data/cleaned/*.csv, defined in features.py
-feature_set = "some_diffs.csv"
+feature_set = "no_diffs.csv"
 FEATURE_COLS = FEATURE_SETS[feature_set]
 df = pd.read_csv(f"data/cleaned/{feature_set}")
 
@@ -75,6 +75,8 @@ print(f"Fit done in {time.time() - t0:.3f}s")
 
 with gzip.open(f"models/forest-{feature_set[:-4]}-{n_trees}_trees-{max_depth}_depth-{max_features}_features.pkl.gz", "wb") as f:
     pickle.dump(forest, f)
+
+print("Saved model.")
 
 t1 = time.time()
 
