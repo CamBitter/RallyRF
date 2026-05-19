@@ -1,6 +1,8 @@
 # logistic regression prediction for tennis matches
 # for comparison purposes with random forest
 
+import pickle
+import os
 import torch
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -125,4 +127,10 @@ if __name__ == "__main__":
 
     print(f"\nTest Accuracy: {accuracy * 100:.2f}%")
     print(f"seed baseline: {seed_accuracy * 100:.2f}%")
+
+    os.makedirs("models", exist_ok=True)
+
+    with open("models/logreg.pkl", "wb") as f:
+        pickle.dump({"w": model.w.detach().cpu().numpy(), "scaler": scaler, "feature_cols": FEATURE_COLS}, f)
+
 

@@ -1,3 +1,4 @@
+import pickle, os
 import torch
 import torch.nn as nn
 import pandas as pd
@@ -34,7 +35,7 @@ class MLP(nn.Module):
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/cleaned/atp_match_features_2*.csv")
+    df = pd.read_csv("data/cleaned/all_diffs.csv")
 
     train_df = df[df["tourney_date"] < 20220101]
     test_df  = df[df["tourney_date"] >= 20220101]
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     loss_fn   = nn.BCELoss()
 
-    for epoch in range(20):
+    for epoch in range(50):
         total_loss = 0
         for X_batch, y_batch in loader:
             optimizer.zero_grad()
@@ -74,3 +75,10 @@ if __name__ == "__main__":
 
     rank_baseline = (test_df["rank_diff"] < 0).astype(int).to_numpy()
     print(f"Rank baseline:       {(rank_baseline == test_df['p1_won'].to_numpy()).mean():.4f}")
+
+    os.makedirs("models", exist_ok=True)
+
+    torch.save(model.state_dict(), "models/mlp_weights.pth")
+
+    with open("models/mlp_meta.pkl", "wb") as f:
+        pickle.dump({"feature_cols": FEATURE_COLS}, f)
