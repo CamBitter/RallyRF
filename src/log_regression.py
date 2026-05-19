@@ -108,7 +108,7 @@ if __name__ == "__main__":
         avg_loss = epoch_loss / num_batches
         losses.append(avg_loss)
 
-        if (epoch + 1) % 100 == 0:
+        if (epoch + 1) % 10 == 0:
             print(f"Epoch {epoch + 1}/{n_epochs}, Loss: {avg_loss:.4f}")
 
     # evaluate on test set
