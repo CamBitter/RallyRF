@@ -23,13 +23,15 @@ class BoostedTreeClassifier:
         self.tree_weights = []
 
         # Initialize residuals to the original labels
-        self.base_prediction = Y.copy().flatten().astype(float).mean()
-        residuals = Y.copy().flatten().astype(float) - self.base_prediction
+        p = Y.copy().flatten().astype(float).mean()
+        self.base_prediction = np.log(p / (1 - p))
+        residuals = Y.copy().flatten().astype(float) - p
+        
 
         for i in range(self.num_trees):
             if self.verbose:
                 print(f"  fitting tree {i + 1}/{self.num_trees}...")
-            tree = DecisionTree(max_depth=self.max_depth)
+            tree = DecisionTree(max_depth=self.max_depth, mode="regression", min_samples = 10)
             tree.fit(X, residuals.reshape(-1, 1))
 
             # Get predictions from the current tree
@@ -60,8 +62,8 @@ class BoostedTreeClassifier:
         return (probs > 0.5).astype(int), confidence, predictions
     #Gets the summed confidence of the first n trees, going by 10, to show how confidence changes as more trees are added. 
     def getConfidences(self, tree_preds):
-        for n in range(0, len(tree_preds)+1, 10):
-            cumulative = sum(tree_preds[1:n+1])
+        for n in range(10, len(tree_preds)+1, 10):
+            cumulative = sum(tree_preds[:n])
             probs_n = 1 / (1 + np.exp(-cumulative))
             conf_n = np.abs(probs_n - 0.5) * 2
             print(f"Trees: {n}, Avg confidence: {conf_n.mean():.4f}")
@@ -76,6 +78,7 @@ if __name__ == "__main__":
 
     feature_set = "all_diffs.csv"
     FEATURE_COLS = FEATURE_SETS[feature_set]
+    
     df = pd.read_csv(f"data/cleaned/{feature_set}")
 
     # Split by date to avoid leakage — train on pre-2022, test on 2022+
@@ -91,7 +94,7 @@ if __name__ == "__main__":
     print("Features and labels built.")
 
     boost = BoostedTreeClassifier(
-        num_trees=10,
+        num_trees=20,
         learning_rate=0.25,
         max_depth=5,
         random_state=41,
@@ -169,3 +172,5 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.show()
+    print(train_df[FEATURE_COLS].std().sort_values())
+    print(train_df[FEATURE_COLS].corrwith(train_df["p1_won"]).sort_values())

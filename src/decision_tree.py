@@ -21,12 +21,13 @@ class Node:
 
 
 class DecisionTree:
-    def __init__(self, min_samples=2, max_depth=2):
+    def __init__(self, min_samples=2, max_depth=2, mode="classification"):
         """"""
 
         self.min_samples = min_samples
         self.max_depth = max_depth
         self.root = None
+        self.mode = mode
 
     def forward(self, X):
         """Predicts a dataset"""
@@ -36,7 +37,7 @@ class DecisionTree:
     def predict_item(self, node, x):
         """Predicts single point by recursively moving down the decision tree"""
 
-        if node.value != None:
+        if node.value is not None:
             # Leaf node
             return node.value
 
@@ -100,9 +101,63 @@ class DecisionTree:
             self.print_tree(tree.left, child_prefix, is_left=True, feature_names=feature_names)
             self.print_tree(tree.right, child_prefix, is_left=False, feature_names=feature_names)
 
+    def get_best_split_regression(self, dataset, num_features):
+
+        X = dataset[:, :-1]
+        Y = dataset[:, -1]
+        n = len(Y)
+
+        parent_var = Y.var()
+        best_split = {"info_gain": 0}
+        best_weighted_var = np.inf
+
+        for feature in range(num_features):
+            order = np.argsort(X[:, feature])
+            x_sorted = X[order, feature]
+            y_sorted = Y[order]
+
+            # Cumulative sums of y and y^2
+            cum_y  = np.cumsum(y_sorted)
+            cum_y2 = np.cumsum(y_sorted ** 2)
+
+            n_left  = np.arange(1, n)
+            n_right = n - n_left
+
+            # Left variance: E[y²] - E[y]²
+            mean_left  = cum_y[:-1] / n_left
+            mean2_left = cum_y2[:-1] / n_left
+            var_left   = mean2_left - mean_left ** 2
+
+            # Right variance using total sums minus cumulative
+            mean_right  = (cum_y[-1] - cum_y[:-1]) / n_right
+            mean2_right = (cum_y2[-1] - cum_y2[:-1]) / n_right
+            var_right   = mean2_right - mean_right ** 2
+
+            weighted_var = (n_left * var_left + n_right * var_right) / n
+
+            # Mask duplicate adjacent values
+            valid = x_sorted[:-1] != x_sorted[1:]
+            weighted_var = np.where(valid, weighted_var, np.inf)
+
+            pos = np.argmin(weighted_var)
+            if weighted_var[pos] < best_weighted_var:
+                best_weighted_var = weighted_var[pos]
+                best_split["feature"] = feature
+                best_split["threshold"] = x_sorted[pos]
+                best_split["info_gain"] = parent_var - best_weighted_var
+
+        if best_split["info_gain"] > 0:
+            left, right = self.split(dataset, best_split["feature"], best_split["threshold"])
+            best_split["left_dataset"] = left
+            best_split["right_dataset"] = right
+
+        return best_split
+
     def get_best_split(self, dataset, num_features):
         """Returns the best split feature and threshold using a vectorized cumsum sweep over sorted feature values."""
-
+        if self.mode == "regression":
+            return self.get_best_split_regression(dataset, num_features)
+        
         X = dataset[:, :-1]
         Y = dataset[:, -1]
         n = len(Y)
@@ -171,7 +226,8 @@ class DecisionTree:
 
     def calculate_leaf_value(self, Y):
         """Outputs the most common class seen in a leaf node dataset"""
-
+        if self.mode == "regression":
+            return Y.mean()
         values, counts = np.unique(Y, return_counts=True)
         most_common = values[np.argmax(counts)]
 
