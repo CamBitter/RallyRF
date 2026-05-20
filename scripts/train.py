@@ -18,26 +18,6 @@ feature_set = "no_diffs.csv"
 FEATURE_COLS = FEATURE_SETS[feature_set]
 df = pd.read_csv(f"data/cleaned/{feature_set}")
 
-"""
-***RESULTS***
-
-all_diffs.csv:
-Train accuracy: 86.31%
-Test accuracy:  63.48%
-Mean confidence: 69.7%
-
-no_diffs.csv:
-Train accuracy: 96.35%
-Test accuracy:  62.87%
-Mean confidence: 62.00%
-
-some_diffs.csv:
-Train accuracy: 91.79%
-Test accuracy:  63.13%
-Mean confidence: 66.24%
-
-"""
-
 # Split by date to avoid leakage — train on pre-2022, test on 2022+
 date_split = 20220101
 
@@ -57,7 +37,6 @@ n_trees = 150
 max_depth = 20
 max_features = 3
 
-
 print("\nUsing custom RandomForestClassifier...")
 forest = RandomForestClassifier(
     num_trees=n_trees,
@@ -73,6 +52,7 @@ t0 = time.time()
 forest.fit(X_train, Y_train_fit)
 print(f"Fit done in {time.time() - t0:.3f}s")
 
+# Saved a compressed model to stay under Github 100MB limit
 with gzip.open(f"models/forest-{feature_set[:-4]}-{n_trees}_trees-{max_depth}_depth-{max_features}_features.pkl.gz", "wb") as f:
     pickle.dump(forest, f)
 
@@ -80,6 +60,7 @@ print("Saved model.")
 
 t1 = time.time()
 
+# Print first 6 trees
 Y_pred, Y_confidence = forest.predict(X_test)
 for t in range(6):
     tree_feature_names = [FEATURE_COLS[i] for i in forest.tree_features[t]]
@@ -87,8 +68,8 @@ for t in range(6):
 
 print(f"Inference done in {time.time() - t1:.3f}s")
 
+# Get train and test accuracy
 Y_train_pred, _ = forest.predict(X_train)
-
 train_accuracy = (Y_train_pred == Y_train).sum() / len(Y_train)
 accuracy = (Y_pred == Y_test).sum() / len(Y_test)
 print(f"Train accuracy: {train_accuracy:.4f}")
