@@ -5,6 +5,16 @@ Random forest ML classification applied to tennis match outcome prediction.
 **By**
 Cam Bitter, Sebastian Pantzer, and Danny Smith.
 
+**Packages & Versions**
+
+| Package      | Version |
+|--------------|---------|
+| numpy        | 2.4.4   |
+| pandas       | 3.0.2   |
+| matplotlib   | 3.10.8  |
+| scikit-learn | 1.8.0   |
+| torch        | 2.11.0  |
+
 ## Abstract
 
 We aim to create a custom random forest classifier for predicting tennis match outcomes. We will build up from decision trees to random forests, and explore further optimization techniques such as gradient boosting. 
