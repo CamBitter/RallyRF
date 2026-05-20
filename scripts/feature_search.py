@@ -3,6 +3,13 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from src.features import FEATURE_SETS
 
+# This script identifies the top 10 permutations of all_diffs feature set that 
+# provide the highest accuracy for a Random Forest classifier. It randomly samples 
+# subsets of features, trains a model, and evaluates accuracy on a test set. 
+# Note that it does not perform an exhaustive search, but rather a random search over the feature space.
+# Most feature sets have essentially the same accuracy.
+# Made by Cam
+
 DATASET = "all_diffs.csv"
 ALL_FEATURES = FEATURE_SETS[DATASET]
 N_SEARCHES = 200
