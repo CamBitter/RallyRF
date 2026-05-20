@@ -2,6 +2,10 @@ import pandas as pd
 import glob
 import os
 
+# This script analyzes the historical performance of seeded players in the original match dataset.
+# It loads match data, filters for matches where both players were seeded, and calculates 
+# the percentage of matches won by the higher seed versus the lower seed. 
+# Made by Danny.
 
 def getDF():
     folder_path = "data/tennis_atp/matches/"
