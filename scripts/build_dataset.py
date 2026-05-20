@@ -47,11 +47,13 @@ def loadCSVs():
 
 
 def one_year_ago(date_int):
+    """Converts YYYYMMDD int to datetime, subtracts 12 months, and converts back to YYYYMMDD int"""
     d = pd.to_datetime(str(date_int), format="%Y%m%d")
     return int((d - pd.DateOffset(months=12)).strftime("%Y%m%d"))
 
 
 def nan_diff(a, b):
+    """Subtracts b from a, but returns NaN if either a or b is NaN (to avoid misleading values when one stat is missing)"""
     if pd.isna(a) or pd.isna(b):
         return np.nan
     return a - b
@@ -92,6 +94,7 @@ def rolling_stats(player_index, player_name, surface, before_date):
     def concat_stat(wcol, lcol):
         return np.concatenate([stat(w, wcol), stat(l, lcol)])
 
+    # Concatenate stats from both wins and losses
     ace  = concat_stat("w_ace",     "l_ace")
     df_  = concat_stat("w_df",      "l_df")
     svpt = concat_stat("w_svpt",    "l_svpt")
@@ -103,6 +106,7 @@ def rolling_stats(player_index, player_name, surface, before_date):
     opp_bpf = np.concatenate([stat(w, "l_bpFaced"), stat(l, "w_bpFaced")])
     opp_bps = np.concatenate([stat(w, "l_bpSaved"), stat(l, "w_bpSaved")])
 
+    # Calculate derived stats, handling division by zero and NaNs
     s_attempts = svpt.sum() - fin.sum()
 
     surface_matches = [m for m in window if m.get("surface") == surface] if surface else []
@@ -132,11 +136,13 @@ def build(df):
         if i % 500 == 0:
             print(f"  {i}/{total} rows processed...")
 
+        # Get date, player, surface info
         date = match["tourney_date"]
         p1   = match["winner_name"]
         p2   = match["loser_name"]
         surf = match.get("surface", None)
 
+        # Calculate 6-month rolling stats for both players up to the match date
         s1 = rolling_stats(player_index, p1, surf, date)
         s2 = rolling_stats(player_index, p2, surf, date)
 
@@ -181,6 +187,7 @@ def build(df):
 
     result = pd.DataFrame(rows)
 
+    # Flip all match rows for data augmentation
     diff_cols = [c for c in result.columns if c.endswith("_diff")]
     p1_cols   = [c for c in result.columns if c.startswith("p1_") and c not in ("p1_name", "p1_won")]
     p2_cols   = [c for c in result.columns if c.startswith("p2_") and c != "p2_name"]
